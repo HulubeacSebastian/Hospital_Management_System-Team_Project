@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DevCoreHospital (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "DevCoreHospital (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
