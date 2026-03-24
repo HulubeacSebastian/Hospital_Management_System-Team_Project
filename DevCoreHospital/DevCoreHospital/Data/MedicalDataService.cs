@@ -14,7 +14,7 @@ namespace DevCoreHospital.Data
 
         public MedicalDataService()
         {
-            
+          
             if (_shiftsMockTable.Count == 0)
             {
                 // COMPLETED shift from 5 hours ago (lasted 4 hours)
@@ -33,6 +33,7 @@ namespace DevCoreHospital.Data
                     StartTime = DateTime.Now.AddHours(-2),
                     Status = "ACTIVE"
                 });
+                // TOTAL: 16 hours (This will trigger the Red Lockout)
             }
         }
 
@@ -46,24 +47,8 @@ namespace DevCoreHospital.Data
             return _mockTable.Where(e => e.Evaluator != null && e.Evaluator.Id == doctorId).ToList();
         }
 
-        // TASK 22: The method to get the total fatigue
         public double GetDoctorFatigueHours(string doctorId)
         {
-
-            string sqlQuery = @"
-                SELECT (
-                    (SELECT IFNULL((julianday('now') - julianday(StartTime)) * 24, 0)
-                     FROM Shifts 
-                     WHERE DoctorID = @DoctorID AND Status = 'ACTIVE' LIMIT 1)
-                    +
-                    (SELECT IFNULL(SUM((julianday(EndTime) - julianday(StartTime)) * 24), 0)
-                     FROM Shifts 
-                     WHERE DoctorID = @DoctorID 
-                     AND Status = 'COMPLETED' 
-                     AND EndTime >= datetime('now', '-24 hours'))
-                ) AS TotalDutyTime;";
-
-
             return CalculateMockFatigue(doctorId);
         }
 
@@ -72,14 +57,14 @@ namespace DevCoreHospital.Data
             var now = DateTime.Now;
             var dayAgo = now.AddHours(-24);
 
-            // 1. Calculate Active Shift hours
+            // 1. Calculate Active Shift
             var active = _shiftsMockTable.FirstOrDefault(s => s.DoctorId == doctorId && s.Status == "ACTIVE");
             double activeHours = active != null ? (now - active.StartTime).TotalHours : 0;
 
             // 2. Calculate Completed Shift hours (only from the last 24 hours)
             double completedHours = _shiftsMockTable
                 .Where(s => s.DoctorId == doctorId && s.Status == "COMPLETED" && s.EndTime >= dayAgo)
-                .Sum(s => (s.EndTime.Value - s.StartTime).TotalHours);
+                .Sum(s => s.EndTime.HasValue ? (s.EndTime.Value - s.StartTime).TotalHours : 0);
 
             return activeHours + completedHours;
         }

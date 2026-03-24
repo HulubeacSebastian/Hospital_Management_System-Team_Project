@@ -6,23 +6,43 @@ using System.Windows.Input;
 using DevCoreHospital.Models;
 using DevCoreHospital.Data;
 using System.Diagnostics;
+using Microsoft.UI.Xaml; // Required for Visibility
 
 namespace DevCoreHospital.ViewModels
 {
     public class MedicalEvaluationViewModel : INotifyPropertyChanged
     {
         private readonly MedicalDataService _dataService = new MedicalDataService();
-
         public ObservableCollection<MedicalEvaluation> PastEvaluations { get; set; } = new ObservableCollection<MedicalEvaluation>();
 
         private string _symptoms = string.Empty;
         public string Symptoms { get => _symptoms; set { _symptoms = value; OnPropertyChanged(); } }
 
+        private bool _isFatigued;
+        public bool IsFatigued
+        {
+            get => _isFatigued;
+            set
+            {
+                _isFatigued = value;
+                OnPropertyChanged();
+                // notify the ui to update the form state and lockout visibility
+                OnPropertyChanged(nameof(IsFormEnabled));
+                OnPropertyChanged(nameof(LockoutVisibility));
+            }
+        }
+
+        // Logic switch for TextBoxes and Buttons
+        public bool IsFormEnabled => !IsFatigued;
+
+        // Visibility switch for the Red Overlay
+        public Visibility LockoutVisibility => IsFatigued ? Visibility.Visible : Visibility.Collapsed;
+
         public RelayCommand SaveDiagnosisCommand { get; }
 
         public MedicalEvaluationViewModel()
         {
-            
+
             SaveDiagnosisCommand = new RelayCommand(SaveDiagnosis, CanSaveDiagnosis);
 
             PopulateHistory();
@@ -49,7 +69,7 @@ namespace DevCoreHospital.ViewModels
 
         private void SaveDiagnosis()
         {
-            // Extra safety check
+            // Extra safety check  
             if (!CanSaveDiagnosis()) return;
 
             var newRecord = new MedicalEvaluation
@@ -72,14 +92,11 @@ namespace DevCoreHospital.ViewModels
         private void CheckDoctorFatigue()
         {
             double fatigueHours = _dataService.GetDoctorFatigueHours("DOC001");
+            IsFatigued = fatigueHours >= 12.0;
 
             Debug.WriteLine("***************************************");
             Debug.WriteLine($"Total Duty Time: {fatigueHours:F1} hours");
-
-            if (fatigueHours >= 12)
-            {
-                Debug.WriteLine("CRITICAL: Doctor has exceeded 12-hour limit. Action Gated.");
-            }
+            if (IsFatigued) Debug.WriteLine("!! LOCKOUT TRIGGERED !!");
             Debug.WriteLine("***************************************");
         }
 

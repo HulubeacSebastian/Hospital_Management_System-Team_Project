@@ -9,23 +9,59 @@
 
     <Grid Padding="20">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="450"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Spacing="15" Grid.Column="0" Margin="0,0,20,0">
-            <TextBlock Text="New Diagnosis" FontSize="20" FontWeight="Bold"/>
-            <TextBox Header="Symptoms" Text="{x:Bind ViewModel.Symptoms, Mode=TwoWay}" AcceptsReturn="True" MinHeight="80"/>
-            <Button Content="Generate &amp; Save" Command="{x:Bind ViewModel.SaveDiagnosisCommand}" HorizontalAlignment="Right" Style="{StaticResource AccentButtonStyle}"/>
-        </StackPanel>
+        <Grid Grid.Column="0" Margin="0,0,30,0">
+
+            <StackPanel Spacing="15">
+                <TextBlock Text="1. MEDICAL EVALUATIONS" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
+
+                <TextBox Header="Patient ID" Text="7759376" IsReadOnly="True" Background="Transparent"/>
+
+                <TextBox Header="Symptoms" 
+                         Text="{x:Bind ViewModel.Symptoms, Mode=TwoWay}" 
+                         IsEnabled="{x:Bind ViewModel.IsFormEnabled, Mode=OneWay}"
+                         PlaceholderText="Enter symptoms..." 
+                         AcceptsReturn="True" MinHeight="100"/>
+
+                <TextBox Header="Meds List" PlaceholderText="Enter medications..." AcceptsReturn="True" MinHeight="60"/>
+                <TextBox Header="Doctor Notes" PlaceholderText="Write notes here..." AcceptsReturn="True" MinHeight="100"/>
+
+                <Button Content="Generate Diagnosis" 
+                        Command="{x:Bind ViewModel.SaveDiagnosisCommand}" 
+                        IsEnabled="{x:Bind ViewModel.IsFormEnabled, Mode=OneWay}"
+                        HorizontalAlignment="Stretch" Height="45"/>
+            </StackPanel>
+
+            <Grid Visibility="{x:Bind ViewModel.LockoutVisibility, Mode=OneWay}" 
+                  Background="#CC000000" 
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Border Background="#A80303" VerticalAlignment="Center" Padding="20,40">
+                    <StackPanel Spacing="5" HorizontalAlignment="Center">
+                        <TextBlock Text="CLINICAL LOCKOUT." 
+                                   FontSize="32" FontWeight="Black" 
+                                   Foreground="White" HorizontalAlignment="Center"/>
+
+                        <TextBlock Text="Maximum duty hours (12h) exceeded." 
+                                   FontSize="20" Foreground="White" 
+                                   HorizontalAlignment="Center"/>
+
+                        <TextBlock Text="*please hand over the active cases." 
+                                   FontSize="16" FontStyle="Italic" 
+                                   Foreground="White" Opacity="0.8"
+                                   HorizontalAlignment="Center" Margin="0,15,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
 
         <StackPanel Grid.Column="1" Spacing="10">
-            <TextBlock Text="Past Evaluations" FontSize="20" FontWeight="Bold"/>
-
+            <TextBlock Text="Medical Records" FontSize="22" FontWeight="Bold"/>
             <ListView ItemsSource="{x:Bind ViewModel.PastEvaluations}" 
                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                       CornerRadius="8" Padding="10">
-
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:MedicalEvaluation">
                         <Grid Padding="10" BorderBrush="Gray" BorderThickness="0,0,0,1">
@@ -33,15 +69,13 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-
                             <StackPanel Grid.Column="0" Margin="0,0,20,0">
                                 <TextBlock Text="{x:Bind FormattedDate}" FontWeight="Bold"/>
                                 <TextBlock Text="{x:Bind FormattedTime}" Foreground="Gray" FontSize="12"/>
                             </StackPanel>
-
                             <StackPanel Grid.Column="1">
                                 <TextBlock Text="{x:Bind Symptoms}" TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                <TextBlock Text="Patient ID: System Generated" FontSize="11" Foreground="DeepSkyBlue"/>
+                                <TextBlock Text="Status: Completed" FontSize="11" Foreground="DeepSkyBlue"/>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>
