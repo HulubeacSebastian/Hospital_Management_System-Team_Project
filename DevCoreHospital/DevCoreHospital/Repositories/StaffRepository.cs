@@ -17,23 +17,46 @@ namespace DevCoreHospital.Repositories
         {
             this.staffList = new List<Staff>();
             this.dbManager = dbManager;
-            this.staffList = dbManager.GetStaff();
         }
-        public List<Doctor> GetAvailableDoctors(string specialization)
+        public void LoadStaff()
         {
-            return staffList.OfType<Doctor>()
-                .Where(d => d.Specialization == specialization)
-                .ToList();
+            staffList = dbManager.GetStaff();
         }
-
-        public void UpdateStaffAvailability(int staffId, bool isAvailable, string status = "")
+        public List<Doctor> GetAvailableDoctors()
         {
-            var staff = staffList.FirstOrDefault(s => s.Id == staffId);
-            if (staff != null)
+            var availableDoctors = dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.available).ToList();
+            return availableDoctors;
+        }
+        public void RegisterStaff(Staff newStaff)
+        {
+            // Here you would add code to save the new staff member to the database
+            // For now, we will just add it to the local list
+            staffList.Add(newStaff);
+        }
+        public void RemoveStaff(int staffId)
+        {
+            var staffToRemove = staffList.FirstOrDefault(staff => staff.staffID == staffId);
+            if (staffToRemove != null)
             {
-                staff.IsAvailable = isAvailable;
-                if (staff is Doctor doc && !string.IsNullOrEmpty(status)) doc.DoctorStatus = status;
+                // Here you would add code to remove the staff member from the database
+                // For now, we will just remove it from the local list
+                staffList.Remove(staffToRemove);
             }
         }
+        public List<Doctor> GetDoctorsBySpecialization(string specialization)
+        {
+            var doctors = dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.specialization.Equals(specialization, StringComparison.OrdinalIgnoreCase)).ToList();
+            return doctors;
+        }
+
+        //public void UpdateStaffAvailability(int staffId, bool isAvailable, DoctorStatus status = DoctorStatus.OFF_DUTY)
+        //{
+        //    var staff = staffList.FirstOrDefault(staff => staff.staffID == staffId);
+        //    if (staff != null)
+        //    {
+        //        staff.available = isAvailable;
+        //        if (staff is Doctor doc) doc.doctorStatus = status;
+        //    }
+        //}
     }
 }
