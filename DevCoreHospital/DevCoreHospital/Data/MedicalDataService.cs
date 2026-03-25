@@ -2,71 +2,79 @@
 using DevCoreHospital.Models;
 using System.Linq;
 using System;
+using System.Diagnostics;
 
 namespace DevCoreHospital.Data
 {
     public class MedicalDataService
     {
-        private static readonly List<MedicalEvaluation> _mockTable = new List<MedicalEvaluation>();
-
-        // --- testing table for Shifts ---
-        private static readonly List<Shift> _shiftsMockTable = new List<Shift>();
+        private static List<MedicalEvaluation> _mockTable = new List<MedicalEvaluation>();
+        private static List<Shift> _shiftsMockTable = new List<Shift>();
+        private static List<AdminNotification> _adminNotifications = new List<AdminNotification>();
 
         public MedicalDataService()
         {
+            // testing allergies (Task 27)
+            if (_mockTable.Count == 0)
+            {
+                _mockTable.Add(new MedicalEvaluation
+                {
+                    PatientId = "7759376",
+                    Symptoms = "Historical Allergy to Penicillin recorded.",
+                    EvaluationDate = DateTime.Now.AddYears(-1)
+                });
+            }
+
             if (_shiftsMockTable.Count == 0)
             {
-                // COMPLETED shift from 5 hours ago (lasted 4 hours)
-                _shiftsMockTable.Add(new Shift
-                {
-                    DoctorId = "DOC001",
-                    StartTime = DateTime.Now.AddHours(-9),
-                    EndTime = DateTime.Now.AddHours(-5),
-                    Status = "COMPLETED"
-                });
-
-                // An active shift that started 2 hours ago
-                _shiftsMockTable.Add(new Shift
-                {
-                    DoctorId = "DOC001",
-                    StartTime = DateTime.Now.AddHours(-2),
-                    Status = "ACTIVE"
-                });
+                _shiftsMockTable.Add(new Shift { DoctorId = "DOC001", StartTime = DateTime.Now.AddHours(-9), EndTime = DateTime.Now.AddHours(-5), Status = "COMPLETED" });
+                _shiftsMockTable.Add(new Shift { DoctorId = "DOC001", StartTime = DateTime.Now.AddHours(-2), Status = "ACTIVE" });
+                // TOTAL: 16 hours (This will trigger the Red Lockout)
+                // TOTAL: 16 hours (This will trigger the Red Lockout)
             }
         }
 
-        public void SaveEvaluation(MedicalEvaluation record)
+        public void SaveEvaluation(MedicalEvaluation record) => _mockTable.Add(record);
+
+        public List<MedicalEvaluation> GetEvaluationsByDoctor(string doctorId) =>
+            _mockTable.Where(e => e.Evaluator != null && e.Evaluator.Id == doctorId).ToList();
+
+        public double GetDoctorFatigueHours(string doctorId) => CalculateMockFatigue(doctorId);
+
+        public void CreateAdminFatigueAlert(string doctorId)
         {
-            _mockTable.Add(record);
+            if (_adminNotifications.Any(n => n.DoctorId == doctorId && n.Timestamp > DateTime.Now.AddMinutes(-10))) return;
+            _adminNotifications.Add(new AdminNotification { DoctorId = doctorId, Message = "Fatigue Alert: 12h exceeded.", Timestamp = DateTime.Now });
         }
 
-        public List<MedicalEvaluation> GetEvaluationsByDoctor(string doctorId)
+        // --- TASK 30: WORKFLOW MANAGEMENT METHODS ---
+
+        public void UpdateAppointmentStatus(string patientId, string status)
         {
-            // Evaluator is string doctor id (ex: "DOC001")
-            return _mockTable
-                .Where(e => !string.IsNullOrWhiteSpace(e.Evaluator) && e.Evaluator == doctorId)
-                .ToList();
+            // Logic to move appointment to 'Finished'
+            Debug.WriteLine($">>>> SQL: Appointment for {patientId} set to {status}.");
         }
 
-        public double GetDoctorFatigueHours(string doctorId)
+            // Logic to set doctor to 'AVAILABLE'
+            Debug.WriteLine($">>>> SQL: Doctor {doctorId} availability updated.");
+            return _mockTable.Where(e => e.Evaluator != null && e.Evaluator.Id == doctorId).ToList();
+            return _mockTable.Where(e => e.Evaluator != null && e.Evaluator.Id == doctorId).ToList();
+        }
+
+
+        public List<MedicalEvaluation> GetPatientMedicalHistory(string patientId)
         {
-            return CalculateMockFatigue(doctorId);
+            return _mockTable.Where(e => e.PatientId == patientId).OrderByDescending(e => e.EvaluationDate).ToList();
         }
 
         private double CalculateMockFatigue(string doctorId)
         {
             var now = DateTime.Now;
             var dayAgo = now.AddHours(-24);
-
-            // 1. Calculate Active Shift
             var active = _shiftsMockTable.FirstOrDefault(s => s.DoctorId == doctorId && s.Status == "ACTIVE");
             double activeHours = active != null ? (now - active.StartTime).TotalHours : 0;
-
-            // 2. Calculate Completed Shift hours (only from the last 24 hours)
-            double completedHours = _shiftsMockTable
-                .Where(s => s.DoctorId == doctorId && s.Status == "COMPLETED" && s.EndTime >= dayAgo)
+            double completedHours = _shiftsMockTable.Where(s => s.DoctorId == doctorId && s.Status == "COMPLETED" && s.EndTime >= dayAgo)
                 .Sum(s => s.EndTime.HasValue ? (s.EndTime.Value - s.StartTime).TotalHours : 0);
-
             return activeHours + completedHours;
         }
     }
