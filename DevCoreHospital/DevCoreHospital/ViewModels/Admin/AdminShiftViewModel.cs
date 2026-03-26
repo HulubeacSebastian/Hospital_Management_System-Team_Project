@@ -29,11 +29,10 @@ namespace DevCoreHospital.ViewModels.Admin
         }
 
         // Cerința: Filtrare automată bazată pe locație/specializare
-        public void FilterStaffForShift(string location, string requiredSpecialization = "", string requiredCertification)
+        public void FilterStaffForShift(string location, string requiredSpecialization = "", string requiredCertification = "")
         {
             AvailableStaff.Clear();
             var filtered = _shiftService.GetFilteredStaff(location, requiredSpecialization, requiredCertification);
-            /// SA IMPLEMENTEZ FILTRARE SI PE LOCATIE, IN REPO SI SERVICE
             
             foreach (var staff in filtered)
             {
