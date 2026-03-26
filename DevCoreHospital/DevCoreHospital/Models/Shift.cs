@@ -25,10 +25,5 @@ namespace DevCoreHospital.Models
             this.EndTime = endTime;
             this.Status = status;
         }
-
-        public static int GetFirstFreeID()
-        {
-
-        }
     }
 }

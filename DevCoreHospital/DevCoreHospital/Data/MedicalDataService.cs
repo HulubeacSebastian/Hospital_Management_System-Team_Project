@@ -58,12 +58,12 @@ namespace DevCoreHospital.Data
             var dayAgo = now.AddHours(-24);
 
             // 1. Calculate Active Shift
-            var active = _shiftsMockTable.FirstOrDefault(s => s.DoctorId == doctorId && s.Status == "ACTIVE");
+            var active = _shiftsMockTable.FirstOrDefault(s => s.Id == doctorId && s.Status == ShiftStatus.ACTIVE);
             double activeHours = active != null ? (now - active.StartTime).TotalHours : 0;
 
             // 2. Calculate Completed Shift hours (only from the last 24 hours)
             double completedHours = _shiftsMockTable
-                .Where(s => s.DoctorId == doctorId && s.Status == "COMPLETED" && s.EndTime >= dayAgo)
+                .Where(s => s.DoctorId == doctorId && s.Status == ShiftStatus.COMPLETED && s.EndTime >= dayAgo)
                 .Sum(s => s.EndTime.HasValue ? (s.EndTime.Value - s.StartTime).TotalHours : 0);
 
             return activeHours + completedHours;
