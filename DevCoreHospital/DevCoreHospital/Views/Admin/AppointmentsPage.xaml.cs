@@ -2,117 +2,109 @@
 using Microsoft.UI.Xaml.Controls;
 using System;
 using DevCoreHospital.Models;
+using DevCoreHospital.ViewModels;
+using DevCoreHospital.Services;
 
 namespace DevCoreHospital.Views
 {
     public sealed partial class AppointmentsPage : Page
     {
+        public AdminAppointmentsViewModel ViewModel { get; }
+
         public AppointmentsPage()
         {
             this.InitializeComponent();
-            LoadDoctors();
+
+            var sqlFactory = new DevCoreHospital.Data.SqlConnectionFactory(@"Data Source=PATRICKPC\SQLEXPRESS;Initial Catalog=DevCoreHospital;Integrated Security=True;Trust Server Certificate=True");
+            var service = new DoctorAppointmentService(sqlFactory);
+
+            ViewModel = new AdminAppointmentsViewModel(service);
+
+            // Încărcăm doctorii la deschiderea paginii
+            Loaded += AppointmentsPage_Loaded;
         }
 
-        private void LoadDoctors()
+        private async void AppointmentsPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // TODO: Încarcă lista de doctori din baza de date
-            // ex: var doctors = await _service.GetAllDoctorsAsync();
-            // DoctorComboBox.ItemsSource = doctors;
-            // FilterDoctorComboBox.ItemsSource = doctors;
+            await ViewModel.LoadDoctorsAsync();
         }
 
-        // ==========================================
-        // CERINȚA: BOOK APPOINTMENT
-        // ==========================================
-        private void BookAppointment_Click(object sender, RoutedEventArgs e)
+        private async void BookAppointment_Click(object sender, RoutedEventArgs e)
         {
             string patientId = PatientIdTextBox.Text;
 
-            if (DoctorComboBox.SelectedItem == null || string.IsNullOrWhiteSpace(patientId) ||
-                AppointmentDatePicker.Date == null || AppointmentTimePicker.SelectedTime == null)
+            // Verificăm dacă a selectat un doctor din listă
+            if (DoctorComboBox.SelectedValue is not int selectedDoctorId ||
+                string.IsNullOrWhiteSpace(patientId) ||
+                AppointmentDatePicker.Date == null ||
+                AppointmentTimePicker.SelectedTime == null)
             {
                 ShowMessage("Please fill in all fields (Doctor, Patient ID, Date, Time).", InfoBarSeverity.Error);
                 return;
             }
 
-            // Aici combini data și ora
-            DateTime appointmentDate = AppointmentDatePicker.Date.Value.DateTime.Add(AppointmentTimePicker.SelectedTime.Value);
-
-            // TODO: Salvarea în baza de date
-            // Regulă tabel: Appointments.patient_id folosește external_ref_id (patientId)
-            // ex: _appointmentService.BookAppointment(doctorId, patientId, appointmentDate);
-
-            ShowMessage($"Appointment booked successfully for Patient {patientId}!", InfoBarSeverity.Success);
-
-            // Reset form
-            PatientIdTextBox.Text = string.Empty;
-            DoctorComboBox.SelectedIndex = -1;
-        }
-
-        // ==========================================
-        // CERINȚA: FINISH APPOINTMENT
-        // ==========================================
-        private void FinishAppointment_Click(object sender, RoutedEventArgs e)
-        {
-            // Presupunem că obiectul legat este de tip 'Appointment' (va trebui să îți creezi clasa asta)
-            if (sender is Button btn && btn.Tag is Appointment appointmentToFinish)
+            try
             {
-                // TODO: Update în baza de date
-                // 1. Setăm statusul programării la "Finished"
-                // 2. Cerința: "Automatically trigger a check: if doctor has no other concurrent appointments, 
-                //    their doctorStatus must revert from IN_EXAMINATION to AVAILABLE."
+                DateTime date = AppointmentDatePicker.Date.Value.DateTime;
+                TimeSpan time = AppointmentTimePicker.SelectedTime.Value;
 
-                /* LOGICĂ BACKEND RECOMANDATĂ PENTRU SERVICIUL TĂU:
-                   
-                   _appointmentRepo.UpdateStatus(appointmentToFinish.Id, "Finished");
-                   
-                   bool hasConcurrent = _appointmentRepo.CheckActiveAppointmentsForDoctor(appointmentToFinish.DoctorId);
-                   if (!hasConcurrent) {
-                       _doctorRepo.UpdateStatus(appointmentToFinish.DoctorId, "AVAILABLE");
-                   }
-                */
+                await ViewModel.BookAppointmentAsync(patientId, selectedDoctorId, date, time);
 
-                ShowMessage("Appointment marked as Finished. Doctor status updated if necessary.", InfoBarSeverity.Success);
-                RefreshAppointmentsList(); // Reîncărcăm lista pe ecran
+                ShowMessage($"Appointment booked successfully for {patientId}!", InfoBarSeverity.Success);
+
+                // Resetăm formularul
+                PatientIdTextBox.Text = string.Empty;
+                DoctorComboBox.SelectedIndex = -1;
+
+                // Reîncărcăm calendarul dacă doctorul selectat e același cu cel din filtru
+                if (FilterDoctorComboBox.SelectedValue is int filterDocId && filterDocId == selectedDoctorId)
+                {
+                    await ViewModel.LoadAppointmentsForDoctorAsync(filterDocId);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowMessage($"Error booking appointment: {ex.Message}", InfoBarSeverity.Error);
             }
         }
 
-        // ==========================================
-        // CERINȚA: CANCEL APPOINTMENT
-        // ==========================================
-        private void CancelAppointment_Click(object sender, RoutedEventArgs e)
+        private async void FilterDoctorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is Appointment appointmentToCancel)
+            if (FilterDoctorComboBox.SelectedValue is int doctorId)
             {
-                // Cerința: "System must validate that the status is not already 'Finished'"
-                if (appointmentToCancel.Status == "Finished")
+                await ViewModel.LoadAppointmentsForDoctorAsync(doctorId);
+            }
+        }
+
+        private async void FinishAppointment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is Appointment appt)
+            {
+                await ViewModel.FinishAppointmentAsync(appt);
+                ShowMessage("Appointment marked as Finished.", InfoBarSeverity.Success);
+
+                // Reîmprospătăm lista
+                if (FilterDoctorComboBox.SelectedValue is int doctorId)
+                    await ViewModel.LoadAppointmentsForDoctorAsync(doctorId);
+            }
+        }
+
+        private async void CancelAppointment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is Appointment appt)
+            {
+                if (appt.Status == "Finished")
                 {
                     ShowMessage("Cannot cancel an appointment that is already Finished!", InfoBarSeverity.Error);
                     return;
                 }
 
-                // TODO: Update în baza de date (Appointments.status -> Canceled)
-                // ex: _appointmentService.CancelAppointment(appointmentToCancel.Id);
-
+                await ViewModel.CancelAppointmentAsync(appt);
                 ShowMessage("Appointment successfully canceled.", InfoBarSeverity.Informational);
-                RefreshAppointmentsList();
+
+                if (FilterDoctorComboBox.SelectedValue is int doctorId)
+                    await ViewModel.LoadAppointmentsForDoctorAsync(doctorId);
             }
-        }
-
-        // ==========================================
-        // CERINȚA: VIEW CALENDAR / APPOINTMENTS
-        // ==========================================
-        private void FilterDoctorComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            RefreshAppointmentsList();
-        }
-
-        private void RefreshAppointmentsList()
-        {
-            // TODO: Adu programările din DB pentru doctorul selectat în FilterDoctorComboBox
-            // var selectedDoctor = FilterDoctorComboBox.SelectedItem;
-            // var appointments = await _appointmentService.GetUpcomingAppointmentsForDoctor(selectedDoctor.Id);
-            // AppointmentsListView.ItemsSource = appointments;
         }
 
         private void ShowMessage(string message, InfoBarSeverity severity)

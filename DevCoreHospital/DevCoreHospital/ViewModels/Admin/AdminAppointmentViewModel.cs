@@ -10,13 +10,13 @@ namespace DevCoreHospital.ViewModels
 {
     public class AdminAppointmentsViewModel : INotifyPropertyChanged
     {
-        private readonly IDoctorAppointmentService _appointmentService;
+        private readonly DoctorAppointmentService _appointmentService;
 
         // Listele observabile care vor actualiza automat interfața (UI-ul) când adăugăm/ștergem elemente
         public ObservableCollection<(int DoctorId, string DoctorName)> Doctors { get; } = new();
         public ObservableCollection<Appointment> AppointmentsList { get; } = new ObservableCollection<Appointment>();
 
-        public AdminAppointmentsViewModel(IDoctorAppointmentService appointmentService)
+        public AdminAppointmentsViewModel(DoctorAppointmentService appointmentService)
         {
             _appointmentService = appointmentService;
         }
