@@ -1,6 +1,6 @@
 ﻿namespace DevCoreHospital.Models
 {
-    internal class Pharmacyst : Staff
+    public class Pharmacyst : Staff
     {
         public int staffID { get; set; }
         public string firstName { get; set; }

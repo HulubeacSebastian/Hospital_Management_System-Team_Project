@@ -19,6 +19,8 @@ namespace DevCoreHospital.Data
             staffList.Add(new Doctor(1, "John", "Doe", "0700-000 000", true, "Cardiology", "12345", DoctorStatus.AVAILABLE));
             staffList.Add(new Doctor(2, "Jane", "Smith", "0700-000 001", false, "Neurology", "54321", DoctorStatus.IN_EXAMINATION));
             staffList.Add(new Doctor(3, "Emily", "Johnson", "0700-000 002", true, "Pediatrics", "67890", DoctorStatus.OFF_DUTY));
+            staffList.Add(new Pharmacyst(4, "Anna", "Doe", "0700-000 003", false, "BPS"));
+            staffList.Add(new Pharmacyst(5, "Mary", "Christmas", "0700-000 004", true, "ASHP"));
             return staffList;
         }
 }
