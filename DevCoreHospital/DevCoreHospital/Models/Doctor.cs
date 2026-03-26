@@ -11,6 +11,7 @@
         public string licenseNumber { get; set; }
         public DoctorStatus doctorStatus { get; set; }
 
+        public Doctor() { }
         public Doctor(int staffID, string firstName, string lastName, string contactInfo, bool available,
             string specialization, string licenseNumber, DoctorStatus doctorStatus)
         {
@@ -22,11 +23,6 @@
             this.specialization = specialization;
             this.licenseNumber = licenseNumber;
             this.doctorStatus = doctorStatus;
-        }
-
-        public void UpdateAvailability(bool newAvailability)
-        {
-            this.available = newAvailability;
         }
     }
 }

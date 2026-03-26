@@ -10,48 +10,62 @@ namespace DevCoreHospital.Repositories
 {
     public class StaffRepository
     {
-        private List<Staff> staffList;
-        private DatabaseManager dbManager;
+        private List<Staff> _staffList;
+        private DatabaseManager _dbManager;
 
         public StaffRepository(DatabaseManager dbManager)
         {
-            this.staffList = new List<Staff>();
-            this.dbManager = dbManager;
+            this._staffList = new List<Staff>();
+            this._dbManager = dbManager;
         }
         public void LoadStaff()
         {
-            staffList = dbManager.GetStaff();
+            _staffList = _dbManager.GetStaff();
         }
         public List<Doctor> GetAvailableDoctors()
         {
-            var availableDoctors = dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.available).ToList();
+            var availableDoctors = _dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.available).ToList();
             return availableDoctors;
+        }
+        private object GetAvailablePharmacists()
+        {
+            var availablePharmacists = _dbManager.GetStaff().OfType<Pharmacyst>.Where(ph => ph.available).ToList();
+            return availablePharmacists
+        }
+        public List<Staff> getAvailableStaff(string doctorSpecialization, string pharmacystCertification)
+        {
+            var availableDoctors = GetAvailableDoctors();
+            var availablePharmacists = GetAvailablePharmacists();
+            // filter the 2 lists and merge them together into one list
+            var filteredDoctors = availableDoctors.Where(doctor => doctor.specialization.Equals(doctorSpecialization));
+            var filteredPharmacists;
+
         }
         public void RegisterStaff(Staff newStaff)
         {
             // Here you would add code to save the new staff member to the database
             // For now, we will just add it to the local list
-            staffList.Add(newStaff);
+            _staffList.Add(newStaff);
         }
         public void RemoveStaff(int staffId)
         {
-            var staffToRemove = staffList.FirstOrDefault(staff => staff.staffID == staffId);
+            var staffToRemove = _staffList.FirstOrDefault(staff => staff.staffID == staffId);
             if (staffToRemove != null)
             {
                 // Here you would add code to remove the staff member from the database
                 // For now, we will just remove it from the local list
-                staffList.Remove(staffToRemove);
+                _staffList.Remove(staffToRemove);
             }
         }
         public List<Doctor> GetDoctorsBySpecialization(string specialization)
         {
-            var doctors = dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.specialization.Equals(specialization, StringComparison.OrdinalIgnoreCase)).ToList();
+            var doctors = _dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.specialization.Equals(specialization, StringComparison.OrdinalIgnoreCase)).ToList();
             return doctors;
         }
 
         //public void UpdateStaffAvailability(int staffId, bool isAvailable, DoctorStatus status = DoctorStatus.OFF_DUTY)
         //{
-        //    var staff = staffList.FirstOrDefault(staff => staff.staffID == staffId);
+        //    var staff = _staffList.FirstOrDefault(staff => staff.staffID == staffId);
         //    if (staff != null)
         //    {
         //        staff.available = isAvailable;
