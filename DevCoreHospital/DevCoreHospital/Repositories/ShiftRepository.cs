@@ -29,7 +29,7 @@ namespace DevCoreHospital.Repositories
             // For now, we will just add it to the local list
             _shiftList.Add(newShift);
         }
-        public void CancelShift(string shiftId)
+        public void CancelShift(int shiftId)
         {
             var shiftToCancel = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
             if (shiftToCancel != null)
@@ -39,12 +39,17 @@ namespace DevCoreHospital.Repositories
                 _shiftList.Remove(shiftToCancel);
             }
         }
+        public List<Shift> GetShifts()
+        {
+            return _shiftList;
+        }
         public List<Shift> GetShiftsByStaffID(int staffId)
         {
-            var shifts = _shiftList.Where(shift => shift.StaffId == staffId.ToString()).ToList();
+            var shifts = _shiftList.Where(shift => shift.AppointedStaff.staffID == staffId).ToList();
             return shifts;
         }
-        public List<Shift> GetActiveShifts() {
+        public List<Shift> GetActiveShifts()
+        {
             var activeShifts = _shiftList.Where(shift => shift.Status == ShiftStatus.ACTIVE).ToList();
             return activeShifts;
         }
@@ -64,4 +69,15 @@ namespace DevCoreHospital.Repositories
             }
             return totalHours;
         }
+
+        public void UpdateShiftStatus(int shiftId, ShiftStatus status)
+        {
+            var shiftToUpdate = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
+            if (shiftToUpdate != null)
+            {
+                shiftToUpdate.Status = status;
+                // Here you would add code to update the shift status in the database
+            }
+        }
     }
+}

@@ -71,15 +71,14 @@ namespace DevCoreHospital.Repositories
             var pharmacysts = _dbManager.GetStaff().OfType<Pharmacyst>().Where(ph => ph.certification.Equals(certification, StringComparison.OrdinalIgnoreCase)).ToList();
             return pharmacysts;
         }
-
-        //public void UpdateStaffAvailability(int staffId, bool isAvailable, DoctorStatus status = DoctorStatus.OFF_DUTY)
-        //{
-        //    var staff = _staffList.FirstOrDefault(staff => staff.staffID == staffId);
-        //    if (staff != null)
-        //    {
-        //        staff.available = isAvailable;
-        //        if (staff is Doctor doc) doc.doctorStatus = status;
-        //    }
-        //}
+        public void UpdateStaffAvailability(int staffId, bool isAvailable, DoctorStatus status = DoctorStatus.OFF_DUTY)
+        {
+            var staff = _staffList.FirstOrDefault(staff => staff.staffID == staffId);
+            if (staff != null)
+            {
+                staff.available = isAvailable;
+                if (staff is Doctor doc) doc.doctorStatus = status;
+            }
+        }
     }
 }
