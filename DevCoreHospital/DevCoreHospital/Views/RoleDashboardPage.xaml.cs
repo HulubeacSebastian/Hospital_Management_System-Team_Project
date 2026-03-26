@@ -35,6 +35,7 @@ namespace DevCoreHospital.Views
             {
                 case UserRole.Admin:
                     Add("See Schedule", "admin-schedule", typeof(DoctorSchedulePage));
+                    Add("Auto-Audit", "admin-auto-audit", typeof(ShiftSwapPlaceholderPage));
                     Add("Appointments", "admin-appointments", typeof(AppointmentsPlaceholderPage));
                     break;
 
