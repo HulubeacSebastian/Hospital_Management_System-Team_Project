@@ -3,6 +3,8 @@ using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels.Doctor;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
+using System;
 
 namespace DevCoreHospital.Views.Doctor
 {
@@ -10,6 +12,7 @@ namespace DevCoreHospital.Views.Doctor
     {
         private readonly DoctorScheduleViewModel _vm;
         private readonly IDialogService _dialogService;
+        private bool _initialized;
 
         public DoctorSchedulePage()
         {
@@ -22,13 +25,23 @@ namespace DevCoreHospital.Views.Doctor
                 _dialogService);
 
             DataContext = _vm;
-            Loaded += DoctorSchedulePage_Loaded;
         }
 
-        private async void DoctorSchedulePage_Loaded(object sender, RoutedEventArgs e)
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
+            base.OnNavigatedTo(e);
+
             _dialogService.SetXamlRoot(this.XamlRoot);
+
+            if (_initialized) return;
+            _initialized = true;
+
             await _vm.InitializeAsync();
+        }
+
+        private void OpenDatePicker_Click(object sender, RoutedEventArgs e)
+        {
+            InlineCalendarPicker.IsCalendarOpen = true;
         }
 
         private void DetailsButton_Click(object sender, RoutedEventArgs e)
