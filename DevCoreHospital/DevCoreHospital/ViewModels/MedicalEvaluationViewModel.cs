@@ -29,7 +29,7 @@ namespace DevCoreHospital.ViewModels
 
         public ObservableCollection<MedicalEvaluation> PastEvaluations { get; } = new();
 
-        // --- TASK 36: Search Logic ---
+        // rask 36: Search Logic ---
         private string _searchText = string.Empty;
         public string SearchText
         {
@@ -243,7 +243,7 @@ namespace DevCoreHospital.ViewModels
 
             _dataService.SaveEvaluation(newRecord);
 
-            // TASK 36: Add to master list and re-filter
+            // task 36: Add to master list and re-filter
             _allRecords.Insert(0, newRecord);
             ApplyFilter();
 
@@ -289,7 +289,7 @@ namespace DevCoreHospital.ViewModels
             var records = _dataService.GetEvaluationsByDoctor(CurrentDoctorId);
             _allRecords = records; // Store in master list
 
-            ApplyFilter(); // Sync ObservableCollection
+            ApplyFilter();
             IsLoading = false;
         }
 
