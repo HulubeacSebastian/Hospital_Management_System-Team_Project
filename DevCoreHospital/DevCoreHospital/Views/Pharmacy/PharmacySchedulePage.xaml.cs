@@ -17,9 +17,8 @@ public sealed partial class PharmacySchedulePage : Page
         ICurrentUserService currentUser = new CurrentUserService();
         var sqlFactory = new SqlConnectionFactory();
         var dbManager = new DatabaseManager(sqlFactory);
-        var staffRepo = new StaffRepository(dbManager);
         var shiftRepo = new ShiftRepository(dbManager);
-        var scheduleService = new PharmacyScheduleService(staffRepo, shiftRepo);
+        var scheduleService = new PharmacyScheduleService(shiftRepo);
         var handoverService = new PharmacyHandoverService(sqlFactory);
         ViewModel = new PharmacyScheduleViewModel(currentUser, scheduleService, handoverService);
         DataContext = ViewModel;

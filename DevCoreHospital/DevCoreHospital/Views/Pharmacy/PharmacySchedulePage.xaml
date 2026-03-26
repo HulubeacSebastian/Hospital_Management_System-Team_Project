@@ -34,7 +34,8 @@
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock Text="Pharmacy Schedule"
                            FontSize="44"
-                           FontWeight="SemiBold"/>
+                           FontWeight="SemiBold"
+                           Foreground="White"/>
                 <TextBlock Text="{Binding HeaderSubtitle}"
                            FontSize="16"
                            Foreground="#6B7280"/>

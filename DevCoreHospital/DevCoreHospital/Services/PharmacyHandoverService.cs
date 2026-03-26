@@ -36,7 +36,7 @@ public sealed class PharmacyHandoverService : IPharmacyHandoverService
         return scalar is int i ? i : Convert.ToInt32(scalar);
     }
 
-    public async Task<IReadOnlyList<PharmacyStaffMember>> GetAvailableIncomingPharmacistsAsync(
+    public async Task<IReadOnlyList<Pharmacist>> GetAvailableIncomingPharmacistsAsync(
         int outgoingStaffId,
         CancellationToken cancellationToken = default)
     {
@@ -48,7 +48,7 @@ public sealed class PharmacyHandoverService : IPharmacyHandoverService
             ORDER BY DisplayName;
             """;
 
-        var list = new List<PharmacyStaffMember>();
+        var list = new List<Pharmacist>();
 
         await using SqlConnection connection = _connectionFactory.Create();
         await connection.OpenAsync(cancellationToken);
@@ -59,10 +59,12 @@ public sealed class PharmacyHandoverService : IPharmacyHandoverService
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            list.Add(new PharmacyStaffMember
+            list.Add(new Pharmacist
             {
-                StaffId = reader.GetInt32(0),
-                DisplayName = reader.IsDBNull(1) ? "" : reader.GetString(1)
+                StaffID = reader.GetInt32(0),
+                DisplayName = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                Role = "Pharmacist",
+                Available = true
             });
         }
 
@@ -84,6 +86,26 @@ public sealed class PharmacyHandoverService : IPharmacyHandoverService
 
         try
         {
+            // Real-time requirement: handover can only be completed after the pharmacist's Active shift ended.
+            const string shiftEndedCheck = """
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM dbo.PharmacyShifts
+                    WHERE StaffID = @outgoing
+                      AND Status = N'Active'
+                      AND EndDateTime <= SYSDATETIME()
+                )
+                THEN 1 ELSE 0 END;
+                """;
+            await using (SqlCommand c0 = new(shiftEndedCheck, connection, tx))
+            {
+                c0.Parameters.AddWithValue("@outgoing", outgoingStaffId);
+                var scalar = await c0.ExecuteScalarAsync(cancellationToken);
+                var ended = scalar is int i ? i == 1 : Convert.ToInt32(scalar) == 1;
+                if (!ended)
+                    throw new InvalidOperationException("Your shift hasn't ended yet. Complete the handover at shift end time.");
+            }
+
             // Verify incoming exists and is available
             const string verifyIncoming = """
                 SELECT COUNT(*) FROM dbo.PharmacyStaff

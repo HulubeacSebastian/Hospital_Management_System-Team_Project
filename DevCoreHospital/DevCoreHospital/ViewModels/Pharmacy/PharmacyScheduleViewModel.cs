@@ -15,7 +15,7 @@ public class PharmacyScheduleViewModel : ObservableObject
     private readonly IPharmacyHandoverService _handoverService;
 
     public ObservableCollection<PharmacyShiftItemViewModel> Shifts { get; } = new();
-    public ObservableCollection<PharmacyStaffMember> IncomingPharmacists { get; } = new();
+    public ObservableCollection<Pharmacist> IncomingPharmacists { get; } = new();
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
@@ -45,8 +45,8 @@ public class PharmacyScheduleViewModel : ObservableObject
     private int _processingQueueCount;
     public int ProcessingQueueCount { get => _processingQueueCount; set => SetProperty(ref _processingQueueCount, value); }
 
-    private PharmacyStaffMember? _selectedIncoming;
-    public PharmacyStaffMember? SelectedIncoming
+    private Pharmacist? _selectedIncoming;
+    public Pharmacist? SelectedIncoming
     {
         get => _selectedIncoming;
         set
@@ -172,7 +172,7 @@ public class PharmacyScheduleViewModel : ObservableObject
             var rangeStart = IsWeeklyView ? StartOfWeek(AnchorDate) : AnchorDate.Date;
             var rangeEnd = IsWeeklyView ? rangeStart.AddDays(7) : rangeStart.AddDays(1);
 
-            var staffId = $"PHARM{_currentUser.UserId:D3}";
+            var staffId = _currentUser.UserId;
             var raw = await _scheduleService.GetShiftsAsync(staffId, rangeStart, rangeEnd);
 
             foreach (var vm in raw.Select(s => new PharmacyShiftItemViewModel(s)))
@@ -235,7 +235,7 @@ public class PharmacyScheduleViewModel : ObservableObject
             CompleteHandoverCommand.RaiseCanExecuteChanged();
             RaisePropertyChanged(nameof(CanCompleteShift));
 
-            await _handoverService.CompleteShiftHandoverAsync(_currentUser.UserId, SelectedIncoming.StaffId);
+            await _handoverService.CompleteShiftHandoverAsync(_currentUser.UserId, SelectedIncoming.StaffID);
 
             HandoverSuccessMessage =
                 "Shift marked COMPLETED. Processing orders were reassigned; your availability was set to unavailable.";

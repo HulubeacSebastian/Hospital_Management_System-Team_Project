@@ -1,6 +1,7 @@
-﻿using DevCoreHospital.Models;
+using DevCoreHospital.Models;
 using DevCoreHospital.Services;
 using DevCoreHospital.Views.Doctor;
+using DevCoreHospital.Views.Pharmacy;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -39,7 +40,7 @@ namespace DevCoreHospital.Views
                     break;
 
                 case UserRole.Pharmacist:
-                    Add("See Schedule", "pharmacist-schedule", typeof(DoctorSchedulePage));
+                    Add("See Schedule", "pharmacist-schedule", typeof(PharmacySchedulePage));
                     Add("Salary", "pharmacist-salary", typeof(DevCoreHospital.Views.SalaryPlaceholderPage));
                     break;
 

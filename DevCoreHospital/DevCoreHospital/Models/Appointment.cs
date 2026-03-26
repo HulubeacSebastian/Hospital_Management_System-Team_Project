@@ -12,7 +12,6 @@ namespace DevCoreHospital.Models
 
         public DateTime Date { get; set; }
 
-        // FIX: these must be TimeSpan (DB TIME columns)
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
 

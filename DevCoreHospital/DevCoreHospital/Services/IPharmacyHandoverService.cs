@@ -11,7 +11,7 @@ public interface IPharmacyHandoverService
     Task<int> GetProcessingQueueCountAsync(int responsibleStaffId, CancellationToken cancellationToken = default);
 
     /// <summary>Pharmacists available to receive handover (excludes outgoing).</summary>
-    Task<IReadOnlyList<PharmacyStaffMember>> GetAvailableIncomingPharmacistsAsync(
+    Task<IReadOnlyList<Pharmacist>> GetAvailableIncomingPharmacistsAsync(
         int outgoingStaffId,
         CancellationToken cancellationToken = default);
 

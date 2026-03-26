@@ -275,7 +275,6 @@ namespace DevCoreHospital.ViewModels.Doctor
             public string FirstName { get; set; } = string.Empty;
             public string LastName { get; set; } = string.Empty;
 
-            // Prefer showing only first + last even if DB has middle names/titles.
             public string DisplayName =>
                 string.Join(" ", new[] { FirstName?.Trim(), LastName?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
@@ -284,7 +283,6 @@ namespace DevCoreHospital.ViewModels.Doctor
                 if (string.IsNullOrWhiteSpace(fullName))
                     return (string.Empty, string.Empty);
 
-                // Collapse whitespace, then take first/last tokens.
                 var parts = fullName
                     .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

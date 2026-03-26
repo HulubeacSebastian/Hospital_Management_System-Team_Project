@@ -5,12 +5,12 @@ namespace DevCoreHospital.ViewModels.Pharmacy;
 
 public sealed class PharmacyShiftItemViewModel
 {
-    public PharmacyShiftItemViewModel(PharmacyShift shift)
+    public PharmacyShiftItemViewModel(Shift shift)
     {
         RotationAssignment = shift.RotationAssignment;
         ShiftStartTime = shift.StartTime;
         ShiftEndTime = shift.EndTime;
-        StatusRaw = shift.Status?.Trim() ?? string.Empty;
+        Status = shift.Status;
     }
 
     public string RotationAssignment { get; }
@@ -42,15 +42,16 @@ public sealed class PharmacyShiftItemViewModel
     {
         get
         {
-            if (string.Equals(StatusRaw, "Scheduled", StringComparison.OrdinalIgnoreCase))
-                return "Scheduled";
-            if (string.Equals(StatusRaw, "Active", StringComparison.OrdinalIgnoreCase))
-                return "Active";
-            if (string.Equals(StatusRaw, "Completed", StringComparison.OrdinalIgnoreCase))
-                return "Completed";
-            return string.IsNullOrEmpty(StatusRaw) ? "Scheduled" : StatusRaw;
+            return Status switch
+            {
+                ShiftStatus.SCHEDULED => "Scheduled",
+                ShiftStatus.ACTIVE => "Active",
+                ShiftStatus.COMPLETED => "Completed",
+                ShiftStatus.CANCELLED => "Cancelled",
+                _ => Status.ToString()
+            };
         }
     }
 
-    private string StatusRaw { get; }
+    private ShiftStatus Status { get; }
 }

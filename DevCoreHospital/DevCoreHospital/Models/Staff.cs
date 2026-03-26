@@ -4,7 +4,6 @@ namespace DevCoreHospital.Models;
 
 public class Staff
 {
-    // --- UML fields ---
     public int StaffID { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
@@ -13,23 +12,18 @@ public class Staff
 
     public void UpdateAvailability(bool newAvailability) => Available = newAvailability;
 
-    // --- Compatibility aliases used across the existing app ---
-    // Id is widely used as the in-memory numeric identifier.
     public int Id
     {
         get => StaffID;
         set => StaffID = value;
     }
 
-    // Some parts of the app treat staff like a code-based identity (e.g. "DOC001"/"PHARM001").
-    // Keep it while the DB/service layer still uses it.
     public string StaffCode
     {
         get => ContactInfo;
         set => ContactInfo = value ?? string.Empty;
     }
 
-    // Existing UI binds to DisplayName; default it to "First Last" when present.
     public string DisplayName
     {
         get
@@ -45,7 +39,6 @@ public class Staff
 
     public string Role { get; set; } = string.Empty;
 
-    // Kept because several repositories/services rely on it (and UML keeps specialization on Doctor).
     public string? Specialization { get; set; }
 
     public bool IsAvailable

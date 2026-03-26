@@ -40,7 +40,6 @@ namespace DevCoreHospital.Models
             }
         }
 
-        // Used only by mock fatigue table
         public string DoctorId { get; set; } = "";
 
         public string RotationAssignment { get; set; } = "";
