@@ -72,21 +72,31 @@ namespace DevCoreHospital.ViewModels
             // Extra safety check  
             if (!CanSaveDiagnosis()) return;
 
-            var newRecord = new MedicalEvaluation
-            {
-                Symptoms = this.Symptoms,
-                EvaluationDate = DateTime.Now,
-                Evaluator = new Doctor { Id = "DOC001", Name = "Dr. Vlad" }
-            };
+            //var newRecord = new MedicalEvaluation
+            //{
+            //    Symptoms = this.Symptoms,
+            //    EvaluationDate = DateTime.Now,
+            //    Evaluator = new Doctor
+            //    {
+            //        StaffID = 0, // Set appropriate StaffID if available
+            //        FirstName = "Vlad",
+            //        LastName = "", // Set appropriate last name if available
+            //        ContactInfo = "", // Set appropriate contact info if available
+            //        Available = true, // Set as needed
+            //        Specialization = "", // Set as needed
+            //        LicenseNumber = "DOC001",
+            //        DoctorStatus = default // Set as needed
+            //    }
+            //};
 
-            _dataService.SaveEvaluation(newRecord);
-            PastEvaluations.Insert(0, newRecord);
+            //_dataService.SaveEvaluation(newRecord);
+            //PastEvaluations.Insert(0, newRecord);
 
-            Symptoms = string.Empty;
+            //Symptoms = string.Empty;
 
-            // Re-check fatigue and tell the button to re-evaluate its state
-            CheckDoctorFatigue();
-            SaveDiagnosisCommand.RaiseCanExecuteChanged();
+            //// Re-check fatigue and tell the button to re-evaluate its state
+            //CheckDoctorFatigue();
+            //SaveDiagnosisCommand.RaiseCanExecuteChanged();
         }
 
         private void CheckDoctorFatigue()

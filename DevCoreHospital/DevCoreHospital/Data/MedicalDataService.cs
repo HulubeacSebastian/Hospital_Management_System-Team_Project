@@ -17,23 +17,9 @@ namespace DevCoreHospital.Data
           
             if (_shiftsMockTable.Count == 0)
             {
-                // COMPLETED shift from 5 hours ago (lasted 4 hours)
-                _shiftsMockTable.Add(new Shift
-                {
-                    DoctorId = "DOC001",
-                    StartTime = DateTime.Now.AddHours(-9),
-                    EndTime = DateTime.Now.AddHours(-5),
-                    Status = "COMPLETED"
-                });
-
-                // An active shift that started 2 hours ago
-                _shiftsMockTable.Add(new Shift
-                {
-                    DoctorId = "DOC001",
-                    StartTime = DateTime.Now.AddHours(-2),
-                    Status = "ACTIVE"
-                });
-                // TOTAL: 16 hours (This will trigger the Red Lockout)
+                _shiftsMockTable.Add(new Shift(1, new Doctor(1, "John", "Doe", "0700-000 000", true, "Cardiology", "12345", DoctorStatus.AVAILABLE), "Cardiology", DateTime.Now, DateTime.Now.AddHours(8), ShiftStatus.ACTIVE));
+                _shiftsMockTable.Add(new Shift(2, new Doctor(2, "Jane", "Smith", "0700-000 001", false, "Neurology", "54321", DoctorStatus.IN_EXAMINATION), "Neurology", DateTime.Now, DateTime.Now.AddHours(8), ShiftStatus.SCHEDULED));
+               
             }
         }
 
@@ -44,7 +30,7 @@ namespace DevCoreHospital.Data
 
         public List<MedicalEvaluation> GetEvaluationsByDoctor(string doctorId)
         {
-            return _mockTable.Where(e => e.Evaluator != null && e.Evaluator.Id == doctorId).ToList();
+            return _mockTable.Where(e => e.Evaluator != null && e.Evaluator.StaffID.ToString() == doctorId).ToList();
         }
 
         public double GetDoctorFatigueHours(string doctorId)
@@ -58,13 +44,13 @@ namespace DevCoreHospital.Data
             var dayAgo = now.AddHours(-24);
 
             // 1. Calculate Active Shift
-            var active = _shiftsMockTable.FirstOrDefault(s => s.Id == doctorId && s.Status == ShiftStatus.ACTIVE);
+            var active = _shiftsMockTable.FirstOrDefault(s => s.AppointedStaff != null && s.AppointedStaff.StaffID.ToString() == doctorId && s.Status == ShiftStatus.ACTIVE);
             double activeHours = active != null ? (now - active.StartTime).TotalHours : 0;
 
             // 2. Calculate Completed Shift hours (only from the last 24 hours)
             double completedHours = _shiftsMockTable
-                .Where(s => s.DoctorId == doctorId && s.Status == ShiftStatus.COMPLETED && s.EndTime >= dayAgo)
-                .Sum(s => s.EndTime.HasValue ? (s.EndTime.Value - s.StartTime).TotalHours : 0);
+                .Where(s => s.AppointedStaff != null && s.AppointedStaff.StaffID.ToString() == doctorId && s.Status == ShiftStatus.COMPLETED && s.EndTime >= dayAgo)
+                .Sum(s => (s.EndTime - s.StartTime).TotalHours);
 
             return activeHours + completedHours;
         }
