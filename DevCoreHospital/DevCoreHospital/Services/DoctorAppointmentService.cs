@@ -22,7 +22,7 @@ namespace DevCoreHospital.Services
         public Task<IReadOnlyList<(int DoctorId, string DoctorName)>> GetAllDoctorsAsync() =>
             _repository.GetAllDoctorsAsync();
 
-        public Task<AppointmentDetails?> GetAppointmentDetailsAsync(int appointmentId) =>
+        public Task<Appointment> GetAppointmentDetailsAsync(int appointmentId) =>
             _repository.GetAppointmentDetailsAsync(appointmentId);
 
         public Task<IReadOnlyList<Appointment>> GetAppointmentsForAdminAsync(int doctorId) =>

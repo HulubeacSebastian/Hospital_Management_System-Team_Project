@@ -33,7 +33,7 @@ SELECT
     CAST(a.[Date] AS datetime2) AS [Date], a.StartTime, a.EndTime, 
     ISNULL(a.Status, '') AS [Status], ISNULL(a.Type, '') AS [Type], ISNULL(a.Location, '') AS [Location]
 FROM {appointmentsTable} a
-INNER JOIN {doctorsTable} d ON d.id = a.DoctorId
+INNER JOIN {doctorsTable} d ON d.StaffID = a.DoctorId
 WHERE a.DoctorId = @DoctorId AND CAST(a.[Date] AS date) >= @FromDate AND CAST(a.[Date] AS date) < @ToDate
 ORDER BY a.[Date], a.StartTime OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;";
 
@@ -55,14 +55,14 @@ ORDER BY a.[Date], a.StartTime OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;";
 
             var table = await ResolveDoctorsTableAsync(conn);
             using DbCommand cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT id AS DoctorId, FirstName + ' ' + LastName AS DoctorName FROM {table} ORDER BY FirstName;";
+            cmd.CommandText = $"SELECT StaffID AS DoctorId, FirstName + ' ' + LastName AS DoctorName FROM {table} ORDER BY FirstName;";
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync()) result.Add((GetInt(reader, "DoctorId"), GetString(reader, "DoctorName")));
             return result;
         }
 
-        public async Task<AppointmentDetails?> GetAppointmentDetailsAsync(int appointmentId)
+        public async Task<Appointment> GetAppointmentDetailsAsync(int appointmentId)
         {
             using DbConnection conn = _dbManager.GetConnection();
             if (conn.State != ConnectionState.Open) await conn.OpenAsync();
@@ -75,7 +75,18 @@ ORDER BY a.[Date], a.StartTime OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;";
             using var reader = await cmd.ExecuteReaderAsync();
             if (!await reader.ReadAsync()) return null;
 
-            return new AppointmentDetails { /*... maparea existentă a colegului ...*/ };
+            return new Appointment
+            {
+                Id = GetInt(reader, "Id"),
+                DoctorId = GetInt(reader, "DoctorId"),
+                PatientName = GetString(reader, "PatientName"),
+                Date = GetDateTime(reader, "Date"),
+                StartTime = GetTimeSpan(reader, "StartTime"),
+                EndTime = GetTimeSpan(reader, "EndTime"),
+                Status = GetNullableString(reader, "Status"),
+                Type = GetNullableString(reader, "Type"),
+                Location = GetNullableString(reader, "Location")
+            };
         }
 
         public async Task<IReadOnlyList<Appointment>> GetAppointmentsForAdminAsync(int doctorId)

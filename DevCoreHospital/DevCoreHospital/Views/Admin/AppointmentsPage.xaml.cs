@@ -4,6 +4,8 @@ using System;
 using DevCoreHospital.Models;
 using DevCoreHospital.ViewModels;
 using DevCoreHospital.Services;
+using DevCoreHospital.Repositories;
+using DevCoreHospital.Configuration;
 
 namespace DevCoreHospital.Views
 {
@@ -15,8 +17,9 @@ namespace DevCoreHospital.Views
         {
             this.InitializeComponent();
 
-            var sqlFactory = new DevCoreHospital.Data.SqlConnectionFactory(@"Data Source=PATRICKPC\SQLEXPRESS;Initial Catalog=DevCoreHospital;Integrated Security=True;Trust Server Certificate=True");
-            var service = new DoctorAppointmentService(sqlFactory);
+            var dbManager = new Data.DatabaseManager(AppSettings.ConnectionString); // Create database manager
+            var appointmentRepository = new AppointmentRepository(dbManager); // Create repository using database manager
+            var service = new DoctorAppointmentService(appointmentRepository); // Pass repository to service
 
             ViewModel = new AdminAppointmentsViewModel(service);
 
