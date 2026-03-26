@@ -1,143 +1,83 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using DevCoreHospital.Data;
 using DevCoreHospital.Models;
 
-namespace DevCoreHospital.Repositories;
-
-public sealed class ShiftRepository : IShiftRepository
+namespace DevCoreHospital.Repositories
 {
-    private readonly List<Shift> _shiftList;
-    private readonly DatabaseManager _dbManager;
-
-    public ShiftRepository(DatabaseManager dbManager)
+    public class ShiftRepository
     {
-        _dbManager = dbManager;
-        _shiftList = new List<Shift>();
-        LoadShifts();
-    }
+        private List<Shift> _shiftList;
+        private DatabaseManager _dbManager;
 
-    private void LoadShifts()
-    {
-        _ = _dbManager.ConnectionFactory;
-
-        if (_shiftList.Count > 0)
-            return;
-
-        const int staffId = 1;
-        var today = DateTime.Today;
-
-        AddShift(new Shift
+        public ShiftRepository(DatabaseManager dbManager)
         {
-            Id = 1,
-            StaffId = staffId,
-            RotationAssignment = "Main dispensary — controlled substances audit",
-            StartTime = today.AddHours(7),
-            EndTime = today.AddHours(15),
-            Status = ShiftStatus.COMPLETED
-        });
-
-        AddShift(new Shift
-        {
-            Id = 2,
-            StaffId = staffId,
-            RotationAssignment = "Outpatient clinic satellite",
-            StartTime = today.AddHours(10),
-            EndTime = today.AddHours(18),
-            Status = ShiftStatus.ACTIVE
-        });
-
-        AddShift(new Shift
-        {
-            Id = 3,
-            StaffId = staffId,
-            RotationAssignment = "Oncology infusion suite",
-            StartTime = today.AddDays(1).AddHours(8),
-            EndTime = today.AddDays(1).AddHours(16),
-            Status = ShiftStatus.SCHEDULED
-        });
-
-        AddShift(new Shift
-        {
-            Id = 4,
-            StaffId = staffId,
-            RotationAssignment = "Central pharmacy — IV admixture",
-            StartTime = today.AddDays(2).AddHours(6),
-            EndTime = today.AddDays(2).AddHours(14),
-            Status = ShiftStatus.SCHEDULED
-        });
-
-        AddShift(new Shift
-        {
-            Id = 5,
-            StaffId = staffId,
-            RotationAssignment = "Emergency department",
-            StartTime = today.AddDays(3).AddHours(14),
-            EndTime = today.AddDays(3).AddHours(22),
-            Status = ShiftStatus.SCHEDULED
-        });
-    }
-
-    private void AddShift(Shift shift)
-    {
-        if (shift.Id == 0)
-            shift.Id = _shiftList.Count == 0 ? 1 : _shiftList.Max(s => s.Id) + 1;
-
-        _shiftList.Add(shift);
-    }
-
-    private void CancelShift(int shiftId)
-    {
-        var shift = _shiftList.FirstOrDefault(s => s.Id == shiftId);
-        if (shift != null)
-            shift.Status = ShiftStatus.CANCELLED;
-    }
-
-    private Shift? GetShiftByStaff(int staffId)
-    {
-        return _shiftList.FirstOrDefault(s =>
-            s.StaffId == staffId &&
-            s.Status == ShiftStatus.ACTIVE);
-    }
-
-    private List<Shift> GetActiveShifts()
-    {
-        return _shiftList
-            .Where(s => s.Status == ShiftStatus.ACTIVE)
-            .ToList();
-    }
-
-    public float GetWeeklyHours(int staffId)
-    {
-        var weekStart = StartOfWeek(DateTime.Today);
-        var weekEnd = weekStart.AddDays(7);
-
-        float hours = 0;
-        foreach (var shift in _shiftList.Where(s => s.StaffId == staffId))
-        {
-            if (shift.StartTime < weekStart || shift.StartTime >= weekEnd)
-                continue;
-
-            var end = shift.EndTime ?? shift.StartTime;
-            hours += (float)(end - shift.StartTime).TotalHours;
+            this._shiftList = new List<Shift>();
+            this._dbManager = dbManager;
         }
 
-        return hours;
-    }
+        public void LoadShifts()
+        {
+            this._shiftList = _dbManager.GetShifts();
+        }
+        public void AddShift(Shift newShift)
+        {
+            // Here you would add code to save the new shift to the database
+            // For now, we will just add it to the local list
+            _shiftList.Add(newShift);
+        }
+        public void CancelShift(int shiftId)
+        {
+            var shiftToCancel = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
+            if (shiftToCancel != null)
+            {
+                // Here you would add code to remove the shift from the database
+                // For now, we will just remove it from the local list
+                _shiftList.Remove(shiftToCancel);
+            }
+        }
+        public List<Shift> GetShifts()
+        {
+            return _shiftList;
+        }
+        public List<Shift> GetShiftsByStaffID(int staffId)
+        {
+            var shifts = _shiftList.Where(shift => shift.AppointedStaff.StaffID == staffId).ToList();
+            return shifts;
+        }
+        public List<Shift> GetActiveShifts()
+        {
+            var activeShifts = _shiftList.Where(shift => shift.Status == ShiftStatus.ACTIVE).ToList();
+            return activeShifts;
+        }
+        public float GetWeeklyHours(int staffId)
+        {
+            var shifts = GetShiftsByStaffID(staffId);
+            float totalHours = 0;
+            var monday = DateTime.Now.AddDays(-(int)DateTime.Now.DayOfWeek + (int)DayOfWeek.Monday);
+            var sunday = monday.AddDays(6);
 
-    public IReadOnlyList<Shift> GetShiftsForStaffInRange(int staffId, DateTime rangeStart, DateTime rangeEnd)
-    {
-        return _shiftList
-            .Where(s => s.StaffId == staffId && s.StartTime >= rangeStart && s.StartTime < rangeEnd)
-            .OrderBy(s => s.StartTime)
-            .ToList();
-    }
+            foreach (var shift in shifts)
+            {
+                if (shift.StartTime >= monday && shift.EndTime <= sunday)
+                {
+                    totalHours += (float)(shift.EndTime - shift.StartTime).TotalHours;
+                }
+            }
+            return totalHours;
+        }
 
-    private static DateTime StartOfWeek(DateTime date)
-    {
-        var d = date.Date;
-        var diff = (7 + (int)d.DayOfWeek - (int)DayOfWeek.Monday) % 7;
-        return d.AddDays(-diff);
+        public void UpdateShiftStatus(int shiftId, ShiftStatus status)
+        {
+            var shiftToUpdate = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
+            if (shiftToUpdate != null)
+            {
+                shiftToUpdate.Status = status;
+                // Here you would add code to update the shift status in the database
+            }
+        }
     }
 }

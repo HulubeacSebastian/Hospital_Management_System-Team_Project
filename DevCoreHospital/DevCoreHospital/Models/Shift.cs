@@ -1,59 +1,29 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DevCoreHospital.Models
 {
-    public enum ShiftStatus
-    {
-        SCHEDULED,
-        ACTIVE,
-        COMPLETED,
-        CANCELLED
-    }
-
     public class Shift
     {
-        // --- UML fields ---
-        public int ShiftID { get; set; }
-        public Staff? AppointedStaff { get; set; }
+        public int Id { get; set; }
+        public IStaff AppointedStaff { get; set; }
         public string Location { get; set; } = string.Empty;
-        public DateTime Start { get; set; }
-        public DateTime End { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; } 
         public ShiftStatus Status { get; set; } = ShiftStatus.SCHEDULED;
 
-        public bool IsActive() => Status == ShiftStatus.ACTIVE;
-
-        // --- Compatibility aliases used across the existing app ---
-        public int Id
+        public Shift() { }
+        public Shift(int id, IStaff appointedStaff, string location, DateTime startTime, DateTime endTime, ShiftStatus status)
         {
-            get => ShiftID;
-            set => ShiftID = value;
-        }
-
-        // Existing in-memory pharmacy shift generation uses StaffId + RotationAssignment.
-        public int StaffId
-        {
-            get => AppointedStaff?.StaffID ?? 0;
-            set
-            {
-                AppointedStaff ??= new Staff();
-                AppointedStaff.StaffID = value;
-            }
-        }
-
-        public string DoctorId { get; set; } = "";
-
-        public string RotationAssignment { get; set; } = "";
-
-        public DateTime StartTime
-        {
-            get => Start;
-            set => Start = value;
-        }
-
-        public DateTime? EndTime
-        {
-            get => End == default ? null : End;
-            set => End = value ?? default;
+            this.Id = id;
+            this.AppointedStaff = appointedStaff;
+            this.Location = location;
+            this.StartTime = startTime;
+            this.EndTime = endTime;
+            this.Status = status;
         }
     }
 }

@@ -1,28 +1,28 @@
-namespace DevCoreHospital.Models
+﻿namespace DevCoreHospital.Models
 {
-    public enum DoctorStatus
+    public class Doctor : IStaff
     {
-        AVAILABLE,
-        IN_EXAMINATION,
-        OFF_DUTY
-    }
+        public int StaffID { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string ContactInfo { get; set; }
+        public bool Available { get; set; }
+        public string Specialization { get; set; }
+        public string LicenseNumber { get; set; }
+        public DoctorStatus DoctorStatus { get; set; }
 
-    public class Doctor : Staff
-    {
-        public string? Specialization { get; set; }
-        public string? LicenseNumber { get; set; }
-        public DoctorStatus DoctorStatus { get; set; } = DoctorStatus.AVAILABLE;
-
-        public string Id
+        public Doctor() { }
+        public Doctor(int staffID, string firstName, string lastName, string contactInfo, bool available,
+            string specialization, string licenseNumber, DoctorStatus doctorStatus)
         {
-            get => StaffCode;
-            set => StaffCode = value ?? string.Empty;
-        }
-
-        public string Name
-        {
-            get => DisplayName;
-            set => DisplayName = value ?? string.Empty;
+            this.StaffID = staffID;
+            this.FirstName = firstName;
+            this.LastName = lastName;
+            this.ContactInfo = contactInfo;
+            this.Available = available;
+            this.Specialization = specialization;
+            this.LicenseNumber = licenseNumber;
+            this.DoctorStatus = doctorStatus;
         }
     }
 }
