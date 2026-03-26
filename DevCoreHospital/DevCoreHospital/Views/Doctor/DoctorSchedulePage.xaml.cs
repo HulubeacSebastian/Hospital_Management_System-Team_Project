@@ -3,6 +3,7 @@ using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels.Doctor;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace DevCoreHospital.Views.Doctor
 {
@@ -15,6 +16,9 @@ namespace DevCoreHospital.Views.Doctor
         {
             InitializeComponent();
 
+            // Prevent stale UI when navigating back/forward
+            NavigationCacheMode = NavigationCacheMode.Disabled;
+
             _dialogService = new DialogService();
             _vm = new DoctorScheduleViewModel(
                 new CurrentUserService(),
@@ -22,12 +26,11 @@ namespace DevCoreHospital.Views.Doctor
                 _dialogService);
 
             DataContext = _vm;
-
-            Loaded += DoctorSchedulePage_Loaded;
         }
 
-        private async void DoctorSchedulePage_Loaded(object sender, RoutedEventArgs e)
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
+            base.OnNavigatedTo(e);
             _dialogService.SetXamlRoot(this.XamlRoot);
             await _vm.InitializeAsync();
         }
@@ -35,7 +38,9 @@ namespace DevCoreHospital.Views.Doctor
         private void DetailsButton_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as FrameworkElement)?.DataContext is AppointmentItemViewModel item)
-                _vm.OpenDetails(item);
+            {
+                Frame?.Navigate(typeof(AppointmentDetailsPage), item);
+            }
         }
     }
 }
