@@ -18,6 +18,8 @@ namespace DevCoreHospital.Services
             _dataSource = dataSource;
         }
 
+        public IFatigueShiftDataSource GetDataSource() => _dataSource;
+
         public AutoAuditResult RunAutoAudit(DateTime weekStart)
         {
             var normalizedWeekStart = StartOfWeek(weekStart);

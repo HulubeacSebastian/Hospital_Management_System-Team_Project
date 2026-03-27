@@ -86,7 +86,9 @@ namespace DevCoreHospital.ViewModels
                     ReassignText = s.SuggestedStaffId.HasValue
                         ? $"Shift #{s.ShiftId}: {s.OriginalStaffName} -> {s.SuggestedStaffName}"
                         : $"Shift #{s.ShiftId}: no replacement candidate",
-                    Reason = s.Reason
+                    Reason = s.Reason,
+                    SuggestedStaffId = s.SuggestedStaffId,
+                    SuggestedStaffName = s.SuggestedStaffName
                 });
             }
 
@@ -117,6 +119,8 @@ namespace DevCoreHospital.ViewModels
             public int ShiftId { get; set; }
             public string ReassignText { get; set; } = string.Empty;
             public string Reason { get; set; } = string.Empty;
+            public int? SuggestedStaffId { get; set; }
+            public string SuggestedStaffName { get; set; } = string.Empty;
         }
     }
 }

@@ -38,7 +38,7 @@ namespace DevCoreHospital.Views
                     Add("See Schedule", "admin-schedule", typeof(DoctorSchedulePage));
                     Add("Appointments", "admin-appointments", typeof(AppointmentsPage));
                     Add("Create Shift", "admin-create-shift", typeof(AdminShiftView));
-                    Add("Auto-Audit", "admin-auto-audit", typeof(ShiftSwapPlaceholderPage));
+                    Add("Auto-Audit", "admin-auto-audit", typeof(FatigueAuditPage));
                     Add("ER Dispatch", "admin-er-dispatch", typeof(ERDispatchPage));
                     break;
 

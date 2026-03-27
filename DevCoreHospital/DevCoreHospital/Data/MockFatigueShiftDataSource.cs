@@ -67,6 +67,26 @@ namespace DevCoreHospital.Data
                 .Sum(s => (s.End - s.Start).TotalHours);
         }
 
+        /// <summary>
+        /// Reassign a shift from one staff member to another (in-memory operation)
+        /// </summary>
+        public bool ReassignShift(int shiftId, int newStaffId)
+        {
+            var shift = _shifts.FirstOrDefault(s => s.Id == shiftId);
+            if (shift == null)
+                return false;
+
+            var newStaff = _staff.FirstOrDefault(s => s.StaffId == newStaffId);
+            if (newStaff == null)
+                return false;
+
+            // Update the shift's staff assignment
+            shift.StaffId = newStaffId;
+            shift.StaffName = newStaff.FullName;
+
+            return true;
+        }
+
         private RosterShift NewShift(int id, int staffId, string role, string specialization, DateTime start, DateTime end)
         {
             var staffName = _staff.First(x => x.StaffId == staffId).FullName;
