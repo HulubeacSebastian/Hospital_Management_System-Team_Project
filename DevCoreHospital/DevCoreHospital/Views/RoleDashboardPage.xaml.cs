@@ -1,5 +1,6 @@
 ﻿using DevCoreHospital.Models;
 using DevCoreHospital.Services;
+using DevCoreHospital.Views.Admin;
 using DevCoreHospital.Views.Doctor;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
