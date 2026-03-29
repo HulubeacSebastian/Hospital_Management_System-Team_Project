@@ -10,103 +10,168 @@
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
+
+        <SolidColorBrush x:Key="BgBrush" Color="#FF0B120D"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#FF0F1711"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#FFB7C2BA"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#FF166534"/>
     </Page.Resources>
 
-    <Grid Padding="24" RowSpacing="16">
+    <Grid Padding="24" RowSpacing="14" Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid>
+        <!-- Header -->
+        <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="320"/>
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock Text="Pharmacy Schedule"
+                           Foreground="{StaticResource TextBrush}"
                            FontSize="44"
                            FontWeight="SemiBold"
-                           Foreground="White"/>
+                           VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding HeaderSubtitle}"
-                           FontSize="16"
-                           Foreground="#6B7280"/>
+                           Foreground="{StaticResource MutedBrush}"
+                           FontSize="16"/>
             </StackPanel>
 
-            <Button Grid.Column="1" Content="Daily" Margin="8,0,0,0" Command="{Binding ShowDailyCommand}"/>
-            <Button Grid.Column="2" Content="Weekly" Margin="8,0,0,0" Command="{Binding ShowWeeklyCommand}"/>
-
-            <Button Grid.Column="3" Content="Previous" Margin="16,0,0,0" Command="{Binding PreviousPeriodCommand}"/>
-            <Button Grid.Column="4" Content="Today" Margin="8,0,0,0" Command="{Binding TodayCommand}"/>
-            <Button Grid.Column="5" Content="Next" Margin="8,0,0,0" Command="{Binding NextPeriodCommand}"/>
-
-            <Button Grid.Column="6" Content="Refresh" Margin="16,0,0,0" Command="{Binding RefreshCommand}"/>
+            <ComboBox Grid.Column="1"
+                      Height="40"
+                      ItemsSource="{Binding Pharmacists}"
+                      SelectedItem="{Binding SelectedPharmacist, Mode=TwoWay}"
+                      DisplayMemberPath="PharmacistName"
+                      PlaceholderText="Select pharmacist"/>
         </Grid>
 
-        <StackPanel Grid.Row="1" Spacing="10">
-            <Border Background="#FEF3C7"
-                    BorderBrush="#D97706"
+        <!-- Controls (navigation + view mode) -->
+        <Grid Grid.Row="1" ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Content="Previous" Command="{Binding PreviousPeriodCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+            <Button Grid.Column="1" Content="Today" Command="{Binding TodayCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+            <Button Grid.Column="2" Content="Next" Command="{Binding NextPeriodCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+
+            <Button x:Name="DateButton"
+                    Grid.Column="3"
+                    Content="{Binding SelectedDateText}"
+                    Margin="8,0,0,0"
+                    Background="Transparent"
+                    Foreground="{StaticResource TextBrush}"
+                    BorderBrush="{StaticResource AccentBrush}"
+                    BorderThickness="1"
+                    Padding="12,6">
+                <Button.Flyout>
+                    <Flyout Placement="Bottom">
+                        <CalendarView x:Name="DateCalendar"
+                                      SelectionMode="Single"
+                                      SelectedDatesChanged="DateCalendar_SelectedDatesChanged"/>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <Button Grid.Column="4" Content="Daily" Command="{Binding ShowDailyCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"
+                    Margin="8,0,0,0"/>
+            <Button Grid.Column="5" Content="Weekly" Command="{Binding ShowWeeklyCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+            <Button Grid.Column="6" Content="Refresh" Command="{Binding RefreshCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+        </Grid>
+
+        <!-- Error / access messages -->
+        <StackPanel Grid.Row="2" Spacing="10">
+            <Border Background="#332A1204"
+                    BorderBrush="{StaticResource AccentBrush}"
                     BorderThickness="1"
                     CornerRadius="14"
                     Padding="14,10"
                     Visibility="{Binding IsAccessDenied, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock TextWrapping="Wrap" Foreground="#92400E"
+                <TextBlock TextWrapping="Wrap"
+                           Foreground="#FFFFB4B4"
                            Text="Pharmacy Schedule is available to pharmacist accounts. Set Role to Pharmacist in CurrentUserService (or MockCurrentUserService) to view your roster."/>
             </Border>
-            <Border Background="#FFF7ED"
-                    BorderBrush="#F59E0B"
+
+            <Border Background="#332A1204"
+                    BorderBrush="{StaticResource AccentBrush}"
                     BorderThickness="1"
                     CornerRadius="14"
                     Padding="14,10"
                     Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#9A3412" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="#FFFFB4B4"
+                           TextWrapping="Wrap"/>
             </Border>
         </StackPanel>
 
-        <Grid Grid.Row="2" RowSpacing="16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <Grid Grid.Row="0">
+        <!-- Content: empty state + schedule list -->
+        <Grid Grid.Row="3">
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibilityConverter}}">
                 <TextBlock Text="No shifts in this period."
+                           Foreground="{StaticResource TextBrush}"
                            FontSize="20"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="Try Weekly view, change the date range, or Refresh."
-                           Foreground="#9CA3AF"
+                <TextBlock Text="Try Previous/Next, change the period, or Refresh."
+                           Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <ListView ItemsSource="{Binding Shifts}" SelectionMode="None">
+            <ListView ItemsSource="{Binding Shifts}"
+                      SelectionMode="None"
+                      Background="Transparent"
+                      BorderThickness="0">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="Padding" Value="0"/>
                         <Setter Property="Margin" Value="0,0,0,12"/>
+                        <Setter Property="Background" Value="Transparent"/>
                     </Style>
                 </ListView.ItemContainerStyle>
 
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#F0FDF4"
-                                CornerRadius="18"
-                                Padding="18"
+                        <Border Background="{StaticResource CardBrush}"
+                                BorderBrush="{StaticResource AccentBrush}"
                                 BorderThickness="1"
-                                BorderBrush="#BBF7D0">
-                            <Grid RowSpacing="8">
+                                CornerRadius="14"
+                                Padding="12">
+                            <Grid RowSpacing="4">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -118,16 +183,18 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
+
                                     <TextBlock Grid.Column="0"
                                                Text="{Binding RotationAssignment}"
-                                               FontSize="18"
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontSize="20"
                                                FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               Foreground="#14532D"/>
+                                               TextWrapping="Wrap"/>
+
                                     <Border Grid.Column="1"
-                                            Background="#166534"
+                                            Background="{StaticResource AccentBrush}"
                                             CornerRadius="12"
-                                            Padding="12,6"
+                                            Padding="10,4"
                                             Margin="12,0,0,0"
                                             VerticalAlignment="Top">
                                         <TextBlock Text="{Binding StatusDisplay}"
@@ -138,82 +205,33 @@
 
                                 <TextBlock Grid.Row="1"
                                            Text="{Binding TimeRangeDetail}"
+                                           Foreground="{StaticResource MutedBrush}"
                                            FontSize="14"
-                                           Foreground="#4B5563"
                                            TextWrapping="Wrap"/>
 
                                 <TextBlock Grid.Row="2"
                                            Text="{Binding DayLabel}"
-                                           FontSize="13"
-                                           Foreground="#6B7280"/>
+                                           Foreground="{StaticResource MutedBrush}"
+                                           FontSize="13"/>
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
 
+            <!-- Loading overlay -->
             <Grid Background="#66000000"
                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="10">
                     <ProgressRing IsActive="True" Width="56" Height="56"/>
                     <TextBlock Text="Loading pharmacy roster..."
-                               Foreground="White"
+                               Foreground="{StaticResource TextBrush}"
                                FontSize="18"
                                HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
-            </Grid>
-
-            <Border Grid.Row="1"
-                    Background="#EFF6FF"
-                    BorderBrush="#3B82F6"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="18"
-                    Visibility="{Binding ShowHandoverSection, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Shift transition &amp; pharmacy handover"
-                               FontSize="20"
-                               FontWeight="SemiBold"
-                               Foreground="#1E3A8A"/>
-                    <TextBlock TextWrapping="Wrap" Foreground="#374151" FontSize="14"
-                               Text="At your shift end time, all Pending_Medications rows still in Processing (not Completed) must move to the incoming pharmacist. You cannot complete your shift until you choose who receives the queue. The database updates ResponsibleStaffID on those orders and sets your is_available flag to false."/>
-                    <TextBlock Text="{Binding ProcessingQueueText}"
-                               FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="#111827"/>
-                    <ComboBox Header="Incoming pharmacist"
-                              PlaceholderText="Select incoming pharmacist"
-                              ItemsSource="{Binding IncomingPharmacists}"
-                              DisplayMemberPath="DisplayName"
-                              SelectedItem="{Binding SelectedIncoming, Mode=TwoWay}"
-                              IsEnabled="{Binding NotHandoverBusy}"/>
-                    <Button Content="Complete shift &amp; hand over queue"
-                            Command="{Binding CompleteHandoverCommand}"
-                            Style="{StaticResource AccentButtonStyle}"
-                            HorizontalAlignment="Left"
-                            IsEnabled="{Binding CanCompleteShift}"/>
-                    <ProgressRing Width="32" Height="32"
-                                  IsActive="{Binding IsHandoverBusy}"
-                                  Visibility="{Binding IsHandoverBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <Border Background="#DCFCE7"
-                            BorderBrush="#22C55E"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="10"
-                            Visibility="{Binding HandoverSuccessMessage, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-                        <TextBlock Text="{Binding HandoverSuccessMessage}" Foreground="#14532D" TextWrapping="Wrap"/>
-                    </Border>
-                    <Border Background="#FEE2E2"
-                            BorderBrush="#EF4444"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="10"
-                            Visibility="{Binding HandoverErrorMessage, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-                        <TextBlock Text="{Binding HandoverErrorMessage}" Foreground="#991B1B" TextWrapping="Wrap"/>
-                    </Border>
-                </StackPanel>
-            </Border>
         </Grid>
     </Grid>
 </Page>

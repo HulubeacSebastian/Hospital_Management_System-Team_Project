@@ -11,6 +11,7 @@ namespace DevCoreHospital.Models
         SCHEDULED,
         ACTIVE,
         COMPLETED,
-        CANCELLED
+        CANCELLED,
+        VACATION
     }
 }

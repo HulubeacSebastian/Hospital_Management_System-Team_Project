@@ -111,6 +111,52 @@ namespace DevCoreHospital.Data
             return shiftList;
         }
 
+        public bool AddShift(Shift shift)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO Shifts (staff_id, location, start_time, end_time, status)
+                    VALUES (@staff_id, @location, @start_time, @end_time, @status)";
+
+                var pStaffId = cmd.CreateParameter();
+                pStaffId.ParameterName = "@staff_id";
+                pStaffId.Value = shift.AppointedStaff.StaffID;
+                cmd.Parameters.Add(pStaffId);
+
+                var pLocation = cmd.CreateParameter();
+                pLocation.ParameterName = "@location";
+                pLocation.Value = shift.Location ?? string.Empty;
+                cmd.Parameters.Add(pLocation);
+
+                var pStart = cmd.CreateParameter();
+                pStart.ParameterName = "@start_time";
+                pStart.Value = shift.StartTime;
+                cmd.Parameters.Add(pStart);
+
+                var pEnd = cmd.CreateParameter();
+                pEnd.ParameterName = "@end_time";
+                pEnd.Value = shift.EndTime;
+                cmd.Parameters.Add(pEnd);
+
+                var pStatus = cmd.CreateParameter();
+                pStatus.ParameterName = "@status";
+                pStatus.Value = shift.Status.ToString();
+                cmd.Parameters.Add(pStatus);
+
+                return cmd.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare la AddShift: {ex.Message}");
+                return false;
+            }
+        }
+
 
         public int GetMedicinesSold(int pharmacistStaffId, int month, int year)
         {

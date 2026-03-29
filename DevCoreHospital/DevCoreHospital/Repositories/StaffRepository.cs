@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,6 +24,11 @@ namespace DevCoreHospital.Repositories
         public void LoadStaff()
         {
             _staffList = _dbManager.GetStaff();
+            Console.WriteLine("\n\n\n\n\n\n\n");
+            foreach(var staff in _staffList)
+            {
+                Console.WriteLine(staff.FirstName);
+            }
         }
 
         public void SaveStaffChanges()
@@ -92,6 +97,11 @@ namespace DevCoreHospital.Repositories
         {
             var doctors = _dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.Specialization.Equals(specialization, StringComparison.OrdinalIgnoreCase)).ToList();
             return doctors;
+        }
+
+        public List<Pharmacyst> GetPharmacists()
+        {
+            return _dbManager.GetStaff().OfType<Pharmacyst>().ToList();
         }
         
         public List<Pharmacyst> GetPharmacystsByCertification(string certification)

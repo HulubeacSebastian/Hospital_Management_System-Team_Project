@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,17 +17,16 @@ namespace DevCoreHospital.Repositories
         {
             this._shiftList = new List<Shift>();
             this._dbManager = dbManager;
-            LoadShifts();
-        }
-
-        public void LoadShifts()
-        {
-            this._shiftList = _dbManager.GetShifts();
+            _shiftList = _dbManager.GetShifts();
         }
 
         public void AddShift(Shift newShift)
         {
-            _shiftList.Add(newShift);
+            var saved = _dbManager.AddShift(newShift);
+            if (saved)
+            {
+                _shiftList.Add(newShift);
+            }
         }
         
         public void CancelShift(int shiftId)
