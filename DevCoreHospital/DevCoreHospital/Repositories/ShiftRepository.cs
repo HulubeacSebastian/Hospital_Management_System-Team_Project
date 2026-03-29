@@ -19,16 +19,22 @@ namespace DevCoreHospital.Repositories
             this._dbManager = dbManager;
         }
 
-        public void LoadShifts()
+        /*
+        public void AddShift(Shift newShift)
         {
             this._shiftList = _dbManager.GetShifts();
         }
+        */
+        
         public void AddShift(Shift newShift)
         {
             // Here you would add code to save the new shift to the database
             // For now, we will just add it to the local list
             _shiftList.Add(newShift);
-        }
+            _dbManager.AddNewShift(newShift);
+        }  
+        
+        
         public void CancelShift(int shiftId)
         {
             var shiftToCancel = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
