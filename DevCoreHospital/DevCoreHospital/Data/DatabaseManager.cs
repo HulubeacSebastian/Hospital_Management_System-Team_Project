@@ -18,6 +18,7 @@ namespace DevCoreHospital.Data
         }
 
 
+        // STAFF CRUD
         public List<IStaff> GetStaff()
         {
             List<IStaff> staffList = new List<IStaff>();
@@ -58,6 +59,82 @@ namespace DevCoreHospital.Data
             return staffList;
         }
 
+        public void SaveStaff(List<IStaff> staffList)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                foreach (var staff in staffList)
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = @"
+                        UPDATE Staff SET 
+                            first_name = @FirstName, 
+                            last_name = @LastName, 
+                            contact_info = @ContactInfo, 
+                            is_available = @IsAvailable, 
+                            license_number = @License, 
+                            specialization = @Specialization, 
+                            status = @Status, 
+                            certification = @Certification
+                        WHERE staff_id = @Id";
+                    AddParameter(cmd, "@FirstName", staff.FirstName);
+                    AddParameter(cmd, "@LastName", staff.LastName);
+                    AddParameter(cmd, "@ContactInfo", staff.ContactInfo);
+                    AddParameter(cmd, "@IsAvailable", staff.Available);
+                    AddParameter(cmd, "@License", staff is Doctor doc ? doc.LicenseNumber : DBNull.Value);
+                    AddParameter(cmd, "@Specialization", staff is Doctor doc2 ? doc2.Specialization : DBNull.Value);
+                    AddParameter(cmd, "@Status", staff is Doctor doc3 ? doc3.DoctorStatus.ToString() : DBNull.Value);
+                    AddParameter(cmd, "@Certification", staff is Pharmacyst ph ? ph.Certification : DBNull.Value);
+                    AddParameter(cmd, "@Id", staff.StaffID);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare SaveStaff: {ex.Message}");
+            }
+        }
+
+
+        public void UpdateStaff(IStaff staff)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                                UPDATE Staff SET 
+                                    first_name = @FirstName, 
+                                    last_name = @LastName, 
+                                    contact_info = @ContactInfo, 
+                                    is_available = @IsAvailable, 
+                                    license_number = @License, 
+                                    specialization = @Specialization, 
+                                    status = @Status, 
+                                    certification = @Certification
+                                WHERE staff_id = @Id";
+                AddParameter(cmd, "@FirstName", staff.FirstName);
+                AddParameter(cmd, "@LastName", staff.LastName);
+                AddParameter(cmd, "@ContactInfo", staff.ContactInfo);
+                AddParameter(cmd, "@IsAvailable", staff.Available);
+                AddParameter(cmd, "@License", staff is Doctor doc ? doc.LicenseNumber : DBNull.Value);
+                AddParameter(cmd, "@Specialization", staff is Doctor doc2 ? doc2.Specialization : DBNull.Value);
+                AddParameter(cmd, "@Status", staff is Doctor doc3 ? doc3.DoctorStatus.ToString() : DBNull.Value);
+                AddParameter(cmd, "@Certification", staff is Pharmacyst ph ? ph.Certification : DBNull.Value);
+                AddParameter(cmd, "@Id", staff.StaffID);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea personalului: {ex.Message}");
+            }
+        }
+
+
+        // SHIFTS CRUD
         public List<Shift> GetShifts()
         {
             List<Shift> shiftList = new List<Shift>();
@@ -90,6 +167,114 @@ namespace DevCoreHospital.Data
             return shiftList;
         }
 
+
+        public void AddNewShift(Shift newShift)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+            INSERT INTO Shifts (staff_id, location, start_time, end_time, status, is_active) 
+            VALUES (@StaffId, @Location, @StartTime, @EndTime, @Status, @IsActive)";
+
+                AddParameter(cmd, "@StaffId", newShift.AppointedStaff.StaffID);
+                AddParameter(cmd, "@Location", newShift.Location);
+                AddParameter(cmd, "@StartTime", newShift.StartTime);
+                AddParameter(cmd, "@EndTime", newShift.EndTime);
+                AddParameter(cmd, "@Status", newShift.Status.ToString());
+                AddParameter(cmd, "@IsActive", true);
+
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare la crearea turei noi: {ex.Message}");
+            }
+        }
+
+        public void UpdateShift(Shift shift)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    UPDATE Shifts SET 
+                        staff_id = @StaffId, 
+                        location = @Location, 
+                        start_time = @StartTime, 
+                        end_time = @EndTime, 
+                        status = @Status
+                    WHERE shift_id = @Id";
+                AddParameter(cmd, "@StaffId", shift.AppointedStaff.StaffID);
+                AddParameter(cmd, "@Location", shift.Location);
+                AddParameter(cmd, "@StartTime", shift.StartTime);
+                AddParameter(cmd, "@EndTime", shift.EndTime);
+                AddParameter(cmd, "@Status", shift.Status.ToString());
+                AddParameter(cmd, "@Id", shift.Id);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea turei: {ex.Message}");
+            }
+        }
+
+        public void DeleteShift(int shiftId)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = "DELETE FROM Shifts WHERE shift_id = @Id";
+                AddParameter(cmd, "@Id", shiftId);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare la stergerea turei: {ex.Message}");
+            }
+        }
+
+        public void SaveShifts(List<Shift> shiftList)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                foreach (var shift in shiftList)
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = @"
+                        UPDATE Shifts SET 
+                            staff_id = @StaffId, 
+                            location = @Location, 
+                            start_time = @StartTime, 
+                            end_time = @EndTime, 
+                            status = @Status
+                        WHERE shift_id = @Id";
+                    AddParameter(cmd, "@StaffId", shift.AppointedStaff.StaffID);
+                    AddParameter(cmd, "@Location", shift.Location);
+                    AddParameter(cmd, "@StartTime", shift.StartTime);
+                    AddParameter(cmd, "@EndTime", shift.EndTime);
+                    AddParameter(cmd, "@Status", shift.Status.ToString());
+                    AddParameter(cmd, "@Id", shift.Id);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare SaveShifts: {ex.Message}");
+            }
+        }
+
+
+        // MEDICINES
         public int GetMedicinesSold(int pharmacistStaffId, int month, int year)
         {
             try
@@ -112,7 +297,7 @@ namespace DevCoreHospital.Data
         }
 
 
-        
+        // APPOINTMENTS CRUD
         public async Task<List<Appointment>> GetUpcomingAppointmentsAsync(int doctorId, DateTime fromDate, DateTime toDate, int skip, int take)
         {
             var items = new List<Appointment>();
@@ -137,22 +322,6 @@ namespace DevCoreHospital.Data
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync()) items.Add(MapReaderToAppointment(reader, true));
-            return items;
-        }
-
-        public async Task<List<(int DoctorId, string DoctorName)>> GetAllDoctorsAsync()
-        {
-            var items = new List<(int, string)>();
-            using var conn = GetConnection();
-            await conn.OpenAsync();
-
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT staff_id, first_name + ' ' + last_name FROM Staff WHERE role = 'Doctor' ORDER BY first_name;";
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                items.Add((reader.GetInt32(0), reader.GetString(1)));
-
             return items;
         }
 
@@ -219,6 +388,8 @@ namespace DevCoreHospital.Data
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
 
+
+        // DOCTOR
         public async Task UpdateDoctorStatusAsync(int doctorId, string status)
         {
             using var conn = GetConnection();
@@ -229,7 +400,24 @@ namespace DevCoreHospital.Data
             await cmd.ExecuteNonQueryAsync();
         }
 
+        public async Task<List<(int DoctorId, string DoctorName)>> GetAllDoctorsAsync()
+        {
+            var items = new List<(int, string)>();
+            using var conn = GetConnection();
+            await conn.OpenAsync();
 
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT staff_id, first_name + ' ' + last_name FROM Staff WHERE role = 'Doctor' ORDER BY first_name;";
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                items.Add((reader.GetInt32(0), reader.GetString(1)));
+
+            return items;
+        }
+
+
+        // UTILS
         internal DbConnection GetConnection()
         {
             var connectionFactory = new SqlConnectionFactory(ConnectionString);
