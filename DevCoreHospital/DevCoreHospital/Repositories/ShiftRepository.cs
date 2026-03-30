@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using DevCoreHospital.Data;
 using DevCoreHospital.Models;
 
@@ -20,10 +18,6 @@ namespace DevCoreHospital.Repositories
             _shiftList = _dbManager.GetShifts();
         }
 
-        public void AddShift(Shift newShift)
-        {
-            this._shiftList = _dbManager.GetShifts();
-        }
 
         public void AddShift(Shift newShift)
         {
