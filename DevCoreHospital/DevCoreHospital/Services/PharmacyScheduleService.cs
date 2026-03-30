@@ -17,9 +17,8 @@ public sealed class PharmacyScheduleService : IPharmacyScheduleService
 
     public Task<IReadOnlyList<Shift>> GetShiftsAsync(int pharmacistStaffId, DateTime rangeStart, DateTime rangeEnd)
     {
-        // Pharmacy shifts are represented by the generic Shift model.
-        // We intentionally avoid code-based staff identities ("PHARM001") and use integer staff IDs instead.
-        var shifts = _shiftRepo.GetShiftsForStaffInRange(pharmacistStaffId, rangeStart, rangeEnd);
-        return Task.FromResult<IReadOnlyList<Shift>>(shifts);
+        // Run the potentially blocking database call off the UI thread
+        return Task.Run<IReadOnlyList<Shift>>(
+            () => _shiftRepo.GetShiftsForStaffInRange(pharmacistStaffId, rangeStart, rangeEnd));
     }
 }

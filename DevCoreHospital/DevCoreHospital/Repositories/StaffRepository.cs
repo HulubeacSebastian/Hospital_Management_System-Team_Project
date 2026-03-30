@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,16 +18,22 @@ namespace DevCoreHospital.Repositories
         {
             this._staffList = new List<IStaff>();
             this._dbManager = dbManager;
+            LoadStaff();
         }
+
         public void LoadStaff()
         {
             _staffList = _dbManager.GetStaff();
+            Console.WriteLine("\n\n\n\n\n\n\n");
+            foreach(var staff in _staffList)
+            {
+                Console.WriteLine(staff.FirstName);
+            }
         }
 
         public void SaveStaffChanges()
         {
-            // Here you would add code to save the staff list to the database
-            // For now, we will just assume it's saved
+            _dbManager.SaveStaff(_staffList);
         }
 
         public List<Doctor> GetAvailableDoctors()
@@ -35,11 +41,13 @@ namespace DevCoreHospital.Repositories
             var availableDoctors = _dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.Available).ToList();
             return availableDoctors;
         }
+        
         private List<Pharmacyst> GetAvailablePharmacists()
         {
             var availablePharmacists = _dbManager.GetStaff().OfType<Pharmacyst>().Where(ph => ph.Available).ToList();
             return availablePharmacists;
         }
+        
         public List<IStaff> GetAvailableStaff(string doctorSpecialization, string pharmacystCertification)
         {
             var availableDoctors = GetAvailableDoctors();
@@ -52,16 +60,16 @@ namespace DevCoreHospital.Repositories
                 var filteredPharmacists = availablePharmacists.Where(ph => ph.Certification.Equals(pharmacystCertification, StringComparison.OrdinalIgnoreCase));
                 availableStaff.AddRange(filteredDoctors);
                 availableStaff.AddRange(filteredPharmacists);
-            } else if (!doctorSpecialization.IsNullOrEmpty()) // in this case, we need only doctors
+            } else if (!doctorSpecialization.IsNullOrEmpty()) 
             {
                 var filteredDoctors = availableDoctors.Where(doctor => doctor.Specialization.Equals(doctorSpecialization, StringComparison.OrdinalIgnoreCase));
                 availableStaff.AddRange(filteredDoctors);
-            } else if (!pharmacystCertification.IsNullOrEmpty()) // in this case, we need only pharmacysts
+            } else if (!pharmacystCertification.IsNullOrEmpty()) 
             {
                 var filteredPharmacists = availablePharmacists.Where(ph => ph.Certification.Equals(pharmacystCertification, StringComparison.OrdinalIgnoreCase));
                 availableStaff.AddRange(filteredPharmacists);
             }
-            else // in this case, retrieve all the available doctors & pharmacysts
+            else 
             {
                 availableStaff.AddRange(availableDoctors);
                 availableStaff.AddRange(availablePharmacists);
@@ -71,30 +79,37 @@ namespace DevCoreHospital.Repositories
 
         public void RegisterStaff(IStaff newStaff)
         {
-            // Here you would add code to save the new staff member to the database
-            // For now, we will just add it to the local list
+           
             _staffList.Add(newStaff);
         }
+        
         public void RemoveStaff(int staffId)
         {
             var staffToRemove = _staffList.FirstOrDefault(staff => staff.StaffID == staffId);
             if (staffToRemove != null)
             {
-                // Here you would add code to remove the staff member from the database
-                // For now, we will just remove it from the local list
+                
                 _staffList.Remove(staffToRemove);
             }
         }
+        
         public List<Doctor> GetDoctorsBySpecialization(string specialization)
         {
             var doctors = _dbManager.GetStaff().OfType<Doctor>().Where(doctor => doctor.Specialization.Equals(specialization, StringComparison.OrdinalIgnoreCase)).ToList();
             return doctors;
         }
+
+        public List<Pharmacyst> GetPharmacists()
+        {
+            return _dbManager.GetStaff().OfType<Pharmacyst>().ToList();
+        }
+        
         public List<Pharmacyst> GetPharmacystsByCertification(string certification)
         {
             var pharmacysts = _dbManager.GetStaff().OfType<Pharmacyst>().Where(ph => ph.Certification.Equals(certification, StringComparison.OrdinalIgnoreCase)).ToList();
             return pharmacysts;
         }
+        
         public void UpdateStaffAvailability(int staffId, bool isAvailable, DoctorStatus status = DoctorStatus.OFF_DUTY)
         {
             var staff = _staffList.FirstOrDefault(staff => staff.StaffID == staffId);
@@ -102,6 +117,7 @@ namespace DevCoreHospital.Repositories
             {
                 staff.Available = isAvailable;
                 if (staff is Doctor doc) doc.DoctorStatus = status;
+                _dbManager.UpdateStaff(staff);
             }
         }
     }

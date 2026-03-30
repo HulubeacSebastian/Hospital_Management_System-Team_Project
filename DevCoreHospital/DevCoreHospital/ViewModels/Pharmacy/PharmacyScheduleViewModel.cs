@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using DevCoreHospital.Models;
+using DevCoreHospital.Repositories;
 using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels.Base;
 
@@ -12,60 +13,28 @@ public class PharmacyScheduleViewModel : ObservableObject
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IPharmacyScheduleService _scheduleService;
-    private readonly IPharmacyHandoverService _handoverService;
+    private readonly StaffRepository _staffRepository;
+    private bool _isInitializing;
 
     public ObservableCollection<PharmacyShiftItemViewModel> Shifts { get; } = new();
-    public ObservableCollection<Pharmacist> IncomingPharmacists { get; } = new();
+    public ObservableCollection<PharmacistOption> Pharmacists { get; } = new();
+
+    private PharmacistOption? _selectedPharmacist;
+    public PharmacistOption? SelectedPharmacist
+    {
+        get => _selectedPharmacist;
+        set
+        {
+            if (SetProperty(ref _selectedPharmacist, value) && !_isInitializing)
+                _ = LoadAsync();
+        }
+    }
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
 
-    private bool _isHandoverBusy;
-    public bool IsHandoverBusy
-    {
-        get => _isHandoverBusy;
-        set
-        {
-            if (SetProperty(ref _isHandoverBusy, value))
-                RaisePropertyChanged(nameof(NotHandoverBusy));
-        }
-    }
-
-    public bool NotHandoverBusy => !IsHandoverBusy;
-
     private string _errorMessage = string.Empty;
     public string ErrorMessage { get => _errorMessage; set => SetProperty(ref _errorMessage, value); }
-
-    private string _handoverErrorMessage = string.Empty;
-    public string HandoverErrorMessage { get => _handoverErrorMessage; set => SetProperty(ref _handoverErrorMessage, value); }
-
-    private string _handoverSuccessMessage = string.Empty;
-    public string HandoverSuccessMessage { get => _handoverSuccessMessage; set => SetProperty(ref _handoverSuccessMessage, value); }
-
-    private int _processingQueueCount;
-    public int ProcessingQueueCount { get => _processingQueueCount; set => SetProperty(ref _processingQueueCount, value); }
-
-    private Pharmacist? _selectedIncoming;
-    public Pharmacist? SelectedIncoming
-    {
-        get => _selectedIncoming;
-        set
-        {
-            if (SetProperty(ref _selectedIncoming, value))
-            {
-                RaisePropertyChanged(nameof(CanCompleteShift));
-                CompleteHandoverCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public string ProcessingQueueText =>
-        $"At shift end, orders in Processing (not Completed) for you: {ProcessingQueueCount}";
-
-    public bool CanCompleteShift =>
-        IsPharmacist && !IsHandoverBusy && SelectedIncoming != null;
-
-    public bool ShowHandoverSection => IsPharmacist;
 
     private DateTime _anchorDate = DateTime.Today;
     public DateTime AnchorDate
@@ -76,6 +45,7 @@ public class PharmacyScheduleViewModel : ObservableObject
             if (SetProperty(ref _anchorDate, value))
             {
                 RaisePropertyChanged(nameof(HeaderSubtitle));
+                RaisePropertyChanged(nameof(SelectedDateText));
                 _ = LoadAsync();
             }
         }
@@ -91,6 +61,7 @@ public class PharmacyScheduleViewModel : ObservableObject
             {
                 RaisePropertyChanged(nameof(IsDailyView));
                 RaisePropertyChanged(nameof(HeaderSubtitle));
+                RaisePropertyChanged(nameof(SelectedDateText));
                 _ = LoadAsync();
             }
         }
@@ -107,26 +78,32 @@ public class PharmacyScheduleViewModel : ObservableObject
             ? $"Week of {StartOfWeek(AnchorDate):dd MMM yyyy} – {(StartOfWeek(AnchorDate).AddDays(6)):dd MMM yyyy}"
             : AnchorDate.ToString("dddd, dd MMM yyyy");
 
+    /// <summary>Toolbar date label (daily vs weekly), same idea as doctor schedule SelectedDateText.</summary>
+    public string SelectedDateText =>
+        IsWeeklyView
+            ? $"Week of {StartOfWeek(AnchorDate):dd MMM yyyy}"
+            : AnchorDate.ToString("dddd, dd MMM yyyy");
+
     public bool IsPharmacist => string.Equals(_currentUser.Role, "Pharmacist", StringComparison.OrdinalIgnoreCase);
     public bool IsAccessDenied => !IsPharmacist;
     public bool IsEmpty => !IsLoading && string.IsNullOrWhiteSpace(ErrorMessage) && Shifts.Count == 0;
 
     public AsyncRelayCommand RefreshCommand { get; }
-    public OldRelayCommand TodayCommand { get; }
-    public OldRelayCommand NextPeriodCommand { get; }
-    public OldRelayCommand PreviousPeriodCommand { get; }
-    public OldRelayCommand ShowDailyCommand { get; }
-    public OldRelayCommand ShowWeeklyCommand { get; }
+    public RelayCommand TodayCommand { get; }
+    public RelayCommand NextPeriodCommand { get; }
+    public RelayCommand PreviousPeriodCommand { get; }
+    public RelayCommand ShowDailyCommand { get; }
+    public RelayCommand ShowWeeklyCommand { get; }
     public AsyncRelayCommand CompleteHandoverCommand { get; }
 
     public PharmacyScheduleViewModel(
         ICurrentUserService currentUser,
         IPharmacyScheduleService scheduleService,
-        IPharmacyHandoverService handoverService)
+        StaffRepository staffRepository)
     {
         _currentUser = currentUser;
         _scheduleService = scheduleService;
-        _handoverService = handoverService;
+        _staffRepository = staffRepository;
 
         RefreshCommand = new AsyncRelayCommand(LoadAsync, () => IsPharmacist);
         TodayCommand = new OldRelayCommand(() => AnchorDate = DateTime.Today, () => IsPharmacist);
@@ -136,12 +113,25 @@ public class PharmacyScheduleViewModel : ObservableObject
         PreviousPeriodCommand = new OldRelayCommand(
             () => AnchorDate = IsWeeklyView ? AnchorDate.AddDays(-7) : AnchorDate.AddDays(-1),
             () => IsPharmacist);
-        ShowDailyCommand = new OldRelayCommand(() => IsWeeklyView = false, () => IsPharmacist);
-        ShowWeeklyCommand = new OldRelayCommand(() => IsWeeklyView = true, () => IsPharmacist);
+        ShowDailyCommand = new RelayCommand(() => IsWeeklyView = false, () => IsPharmacist);
+        ShowWeeklyCommand = new RelayCommand(() => IsWeeklyView = true, () => IsPharmacist);
         CompleteHandoverCommand = new AsyncRelayCommand(CompleteHandoverAsync, () => CanCompleteShift);
     }
 
-    public async Task InitializeAsync() => await LoadAsync();
+    public async Task InitializeAsync()
+    {
+        _isInitializing = true;
+        try
+        {
+            await LoadPharmacistsAsync();
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+
+        await LoadAsync();
+    }
 
     private static DateTime StartOfWeek(DateTime date)
     {
@@ -158,21 +148,26 @@ public class PharmacyScheduleViewModel : ObservableObject
             Shifts.Clear();
             RaisePropertyChanged(nameof(IsAccessDenied));
             RaisePropertyChanged(nameof(IsEmpty));
-            RaisePropertyChanged(nameof(ShowHandoverSection));
             return;
         }
 
         try
         {
-            HandoverSuccessMessage = "";
             IsLoading = true;
             ErrorMessage = "";
             Shifts.Clear();
 
+            if (SelectedPharmacist is null)
+            {
+                IsLoading = false;
+                RaisePropertyChanged(nameof(IsEmpty));
+                return;
+            }
+
             var rangeStart = IsWeeklyView ? StartOfWeek(AnchorDate) : AnchorDate.Date;
             var rangeEnd = IsWeeklyView ? rangeStart.AddDays(7) : rangeStart.AddDays(1);
 
-            var staffId = _currentUser.UserId;
+            var staffId = SelectedPharmacist.StaffId;
             var raw = await _scheduleService.GetShiftsAsync(staffId, rangeStart, rangeEnd);
 
             foreach (var vm in raw.Select(s => new PharmacyShiftItemViewModel(s)))
@@ -188,69 +183,35 @@ public class PharmacyScheduleViewModel : ObservableObject
             RaisePropertyChanged(nameof(IsAccessDenied));
             RaisePropertyChanged(nameof(IsEmpty));
         }
-
-        await LoadHandoverStateAsync();
     }
 
-    private async Task LoadHandoverStateAsync()
+    private async Task LoadPharmacistsAsync()
     {
-        HandoverErrorMessage = "";
-        IncomingPharmacists.Clear();
-        SelectedIncoming = null;
-        ProcessingQueueCount = 0;
-        RaisePropertyChanged(nameof(ProcessingQueueText));
-        RaisePropertyChanged(nameof(ShowHandoverSection));
+        Pharmacists.Clear();
+        var all = await Task.Run(() => _staffRepository.GetPharmacists());
 
-        if (!IsPharmacist)
+        foreach (var p in all.OrderBy(x => x.FirstName).ThenBy(x => x.LastName))
+        {
+            Pharmacists.Add(new PharmacistOption
+            {
+                StaffId = p.StaffID,
+                PharmacistName = string.Join(" ", new[] { p.FirstName?.Trim(), p.LastName?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x)))
+            });
+        }
+
+        if (Pharmacists.Count == 0)
+        {
+            ErrorMessage = "No pharmacists available.";
+            SelectedPharmacist = null;
             return;
-
-        try
-        {
-            var staffId = _currentUser.UserId;
-            ProcessingQueueCount = await _handoverService.GetProcessingQueueCountAsync(staffId);
-            RaisePropertyChanged(nameof(ProcessingQueueText));
-
-            var incoming = await _handoverService.GetAvailableIncomingPharmacistsAsync(staffId);
-            foreach (var p in incoming)
-                IncomingPharmacists.Add(p);
         }
-        catch (Exception ex)
-        {
-            HandoverErrorMessage =
-                $"Handover data unavailable ({ex.Message}). Run Data/PharmacyHandover_Setup.sql on your database if tables are missing.";
-        }
+
+        SelectedPharmacist = Pharmacists.FirstOrDefault(p => p.StaffId == _currentUser.UserId) ?? Pharmacists.First();
     }
 
-    private async Task CompleteHandoverAsync()
+    public sealed class PharmacistOption
     {
-        if (SelectedIncoming == null)
-            return;
-
-        HandoverErrorMessage = "";
-        HandoverSuccessMessage = "";
-
-        try
-        {
-            IsHandoverBusy = true;
-            CompleteHandoverCommand.RaiseCanExecuteChanged();
-            RaisePropertyChanged(nameof(CanCompleteShift));
-
-            await _handoverService.CompleteShiftHandoverAsync(_currentUser.UserId, SelectedIncoming.StaffID);
-
-            HandoverSuccessMessage =
-                "Shift marked COMPLETED. Processing orders were reassigned; your availability was set to unavailable.";
-            SelectedIncoming = null;
-            await LoadHandoverStateAsync();
-        }
-        catch (Exception ex)
-        {
-            HandoverErrorMessage = ex.Message;
-        }
-        finally
-        {
-            IsHandoverBusy = false;
-            CompleteHandoverCommand.RaiseCanExecuteChanged();
-            RaisePropertyChanged(nameof(CanCompleteShift));
-        }
+        public int StaffId { get; set; }
+        public string PharmacistName { get; set; } = string.Empty;
     }
 }

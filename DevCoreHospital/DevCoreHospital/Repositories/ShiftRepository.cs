@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,48 +17,47 @@ namespace DevCoreHospital.Repositories
         {
             this._shiftList = new List<Shift>();
             this._dbManager = dbManager;
+            _shiftList = _dbManager.GetShifts();
         }
 
-        /*
         public void AddShift(Shift newShift)
         {
             this._shiftList = _dbManager.GetShifts();
         }
-        */
-        
+
         public void AddShift(Shift newShift)
         {
-            // Here you would add code to save the new shift to the database
-            // For now, we will just add it to the local list
             _shiftList.Add(newShift);
             _dbManager.AddNewShift(newShift);
-        }  
-        
+        }
         
         public void CancelShift(int shiftId)
         {
             var shiftToCancel = _shiftList.FirstOrDefault(shift => shift.Id == shiftId);
             if (shiftToCancel != null)
             {
-                // Here you would add code to remove the shift from the database
-                // For now, we will just remove it from the local list
                 _shiftList.Remove(shiftToCancel);
+                _dbManager.DeleteShift(shiftId);
             }
         }
+
         public List<Shift> GetShifts()
         {
             return _shiftList;
         }
+        
         public List<Shift> GetShiftsByStaffID(int staffId)
         {
             var shifts = _shiftList.Where(shift => shift.AppointedStaff.StaffID == staffId).ToList();
             return shifts;
         }
+        
         public List<Shift> GetActiveShifts()
         {
             var activeShifts = _shiftList.Where(shift => shift.Status == ShiftStatus.ACTIVE).ToList();
             return activeShifts;
         }
+        
         public float GetWeeklyHours(int staffId)
         {
             var shifts = GetShiftsByStaffID(staffId);
@@ -94,7 +93,7 @@ namespace DevCoreHospital.Repositories
             if (shiftToUpdate != null)
             {
                 shiftToUpdate.Status = status;
-                // Here you would add code to update the shift status in the database
+                _dbManager.UpdateShift(shiftToUpdate);
             }
         }
     }

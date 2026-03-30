@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Data;
-using Microsoft.Data.SqlClient; 
+using Microsoft.Data.SqlClient;
 using DevCoreHospital.Models;
+using DevCoreHospital.Configuration;
 
 namespace DevCoreHospital.Data
 {
@@ -13,7 +14,7 @@ namespace DevCoreHospital.Data
         /// <summary>
         /// USE YOUR OWN CONNECTION HERE
         /// </summary>
-        private readonly string _connectionString = @"Server=LAPTOP-UV77CFP3\SQLEXPRESS;Database=master;Trusted_Connection=True;TrustServerCertificate=True;";
+        private readonly string _connectionString = AppSettings.ConnectionString;
 
         private static List<Shift> _shiftsMockTable = new List<Shift>();
 
@@ -28,7 +29,7 @@ namespace DevCoreHospital.Data
 
         public void UpdateEvaluationNotes(int evaluationId, string newNotes)
         {
-            string sql = "UPDATE MedicalEvaluations SET Notes = @Notes WHERE EvaluationID = @Id";
+            string sql = "UPDATE MedicalEvaluations SET doctor_notes = @Notes WHERE evaluation_id = @Id";
 
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
@@ -69,7 +70,7 @@ namespace DevCoreHospital.Data
         public List<MedicalEvaluation> GetEvaluationsByDoctor(string doctorId)
         {
             var results = new List<MedicalEvaluation>();
-            string sql = "SELECT * FROM MedicalEvaluations WHERE DoctorId = @DocId ORDER BY EvaluationDate DESC";
+            string sql = "SELECT * FROM Medical_Evaluations WHERE doctor_id = @DocId ORDER BY evaluation_date DESC";
 
             using (SqlConnection vconn = new SqlConnection(_connectionString))
             {
@@ -132,13 +133,13 @@ namespace DevCoreHospital.Data
         {
             return new MedicalEvaluation
             {
-                EvaluationID = (int)reader["EvaluationID"],
-                PatientId = reader["PatientId"].ToString(),
-                Symptoms = reader["Symptoms"].ToString(),
-                MedsList = reader["MedsList"].ToString(),
-                Notes = reader["Notes"].ToString(),
-                EvaluationDate = (DateTime)reader["EvaluationDate"],
-                Evaluator = new Doctor { StaffID = (int)reader["DoctorId"] }
+                EvaluationID = (int)reader["evaluation_id"],
+                PatientId = reader["patient_id"].ToString(),
+                //Symptoms = reader["Symptoms"].ToString(),
+                //MedsList = reader["MedsList"].ToString(),
+                Notes = reader["doctor_notes"].ToString(),
+                EvaluationDate = (DateTime)reader["evaluation_date"],
+                Evaluator = new Doctor { StaffID = (int)reader["doctor_id"] }
             };
         }
  
