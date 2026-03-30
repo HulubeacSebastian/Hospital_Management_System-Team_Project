@@ -28,8 +28,8 @@ namespace DevCoreHospital.Services
 
             // TODO: Validate that the creator has no appointments or medical evaluations scheduled for that day.
 
-            int newId = hangoutRepository.hangoutList.Count > 0 ? hangoutRepository.hangoutList.Max(h => h.hangoutID) + 1 : 1;
-            Hangout newHangout = new Hangout(newId, title, description, date, maxParticipants);
+            // Provide 0 as a placeholder ID. The database handles real identity ID generation.
+            Hangout newHangout = new Hangout(0, title, description, date, maxParticipants);
             newHangout.participantList.Add(creator);
 
             hangoutRepository.AddHangout(newHangout);
@@ -49,7 +49,8 @@ namespace DevCoreHospital.Services
 
             // TODO: Validate that the staff member has no appointments or medical evaluations scheduled for that day.
 
-            hangout.participantList.Add(staff);
+            // Persist the newly joined participant to the database
+            hangoutRepository.AddParticipant(hangoutId, staff.StaffID);
         }
 
         public List<Hangout> GetAllHangouts()
