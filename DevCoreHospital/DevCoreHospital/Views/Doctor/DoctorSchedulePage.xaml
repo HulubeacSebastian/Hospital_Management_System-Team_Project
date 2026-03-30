@@ -59,12 +59,26 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Content="Previous" Command="{Binding PreviousDayCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}"/>
-            <Button Grid.Column="1" Content="Today" Command="{Binding TodayCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}"/>
-            <Button Grid.Column="2" Content="Next" Command="{Binding NextDayCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}"/>
+            <Button Grid.Column="0"
+                    Content="{Binding PreviousButtonText}"
+                    Command="{Binding PreviousDayCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+
+            <Button Grid.Column="1"
+                    Content="Today"
+                    Command="{Binding TodayCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+
+            <Button Grid.Column="2"
+                    Content="{Binding NextButtonText}"
+                    Command="{Binding NextDayCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
 
             <Button x:Name="DateButton"
                     Grid.Column="3"
@@ -78,18 +92,33 @@
                 <Button.Flyout>
                     <Flyout Placement="Bottom">
                         <CalendarView x:Name="DateCalendar"
-                                        SelectionMode="Single"
-                                        SelectedDatesChanged="DateCalendar_SelectedDatesChanged"/>
+                                      SelectionMode="Single"
+                                      SelectedDatesChanged="DateCalendar_SelectedDatesChanged"/>
                     </Flyout>
                 </Button.Flyout>
             </Button>
 
-            <Button Grid.Column="4" Content="Daily" Command="{Binding DailyModeCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}" Margin="8,0,0,0"/>
-            <Button Grid.Column="5" Content="Weekly" Command="{Binding WeeklyModeCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}"/>
-            <Button Grid.Column="6" Content="Refresh" Command="{Binding RefreshCommand}"
-                    Background="{StaticResource AccentBrush}" Foreground="White" BorderBrush="{StaticResource AccentBrush}"/>
+            <Button Grid.Column="4"
+                    Content="Daily"
+                    Command="{Binding DailyModeCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"
+                    Margin="8,0,0,0"/>
+
+            <Button Grid.Column="5"
+                    Content="Weekly"
+                    Command="{Binding WeeklyModeCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
+
+            <Button Grid.Column="6"
+                    Content="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}"/>
         </Grid>
 
         <Border Grid.Row="2"
@@ -99,7 +128,9 @@
                 CornerRadius="14"
                 Padding="14,10"
                 Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#FFFFB4B4" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#FFFFB4B4"
+                       TextWrapping="Wrap"/>
         </Border>
 
         <Grid Grid.Row="3">
@@ -116,7 +147,10 @@
                            HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <ListView ItemsSource="{Binding Appointments}" SelectionMode="None" Background="Transparent" BorderThickness="0">
+            <ListView ItemsSource="{Binding Appointments}"
+                      SelectionMode="None"
+                      Background="Transparent"
+                      BorderThickness="0">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -140,9 +174,16 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="{Binding DateText}" Foreground="{StaticResource MutedBrush}" FontSize="28"/>
-                                    <TextBlock Text="{Binding TimeRangeText}" Foreground="{StaticResource TextBrush}" FontSize="24" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" FontSize="20"/>
+                                    <TextBlock Text="{Binding DateText}"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="28"/>
+                                    <TextBlock Text="{Binding TimeRangeText}"
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontSize="24"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding Status}"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="20"/>
                                 </StackPanel>
 
                                 <Button Grid.Column="1"

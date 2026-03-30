@@ -11,9 +11,7 @@ namespace DevCoreHospital.Data
     public class MedicalDataService
     {
 
-        /// <summary>
-        /// USE YOUR OWN CONNECTION HERE
-        /// </summary>
+       
         private readonly string _connectionString = AppSettings.ConnectionString;
 
         private static List<Shift> _shiftsMockTable = new List<Shift>();

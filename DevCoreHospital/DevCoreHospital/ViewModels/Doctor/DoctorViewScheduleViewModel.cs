@@ -32,6 +32,8 @@ namespace DevCoreHospital.ViewModels.Doctor
                     RaisePropertyChanged(nameof(IsDaily));
                     RaisePropertyChanged(nameof(IsWeekly));
                     RaisePropertyChanged(nameof(SelectedDateText));
+                    RaisePropertyChanged(nameof(PreviousButtonText));
+                    RaisePropertyChanged(nameof(NextButtonText));
                     _ = LoadAsync();
                 }
             }
@@ -39,6 +41,9 @@ namespace DevCoreHospital.ViewModels.Doctor
 
         public bool IsDaily => ViewMode == ScheduleViewMode.Daily;
         public bool IsWeekly => ViewMode == ScheduleViewMode.Weekly;
+
+        public string PreviousButtonText => IsWeekly ? "Previous Week" : "Previous";
+        public string NextButtonText => IsWeekly ? "Next Week" : "Next";
 
         private DoctorOption? _selectedDoctor;
         public DoctorOption? SelectedDoctor
@@ -115,8 +120,14 @@ namespace DevCoreHospital.ViewModels.Doctor
 
             RefreshCommand = new AsyncRelayCommand(LoadAsync, () => IsDoctor);
             TodayCommand = new RelayCommand(() => SelectedDate = DateTime.Today, () => IsDoctor);
-            NextDayCommand = new RelayCommand(() => SelectedDate = SelectedDate.AddDays(1), () => IsDoctor);
-            PreviousDayCommand = new RelayCommand(() => SelectedDate = SelectedDate.AddDays(-1), () => IsDoctor);
+
+            NextDayCommand = new RelayCommand(
+                () => SelectedDate = IsWeekly ? SelectedDate.AddDays(7) : SelectedDate.AddDays(1),
+                () => IsDoctor);
+
+            PreviousDayCommand = new RelayCommand(
+                () => SelectedDate = IsWeekly ? SelectedDate.AddDays(-7) : SelectedDate.AddDays(-1),
+                () => IsDoctor);
 
             DailyModeCommand = new RelayCommand(() => ViewMode = ScheduleViewMode.Daily, () => IsDoctor);
             WeeklyModeCommand = new RelayCommand(() => ViewMode = ScheduleViewMode.Weekly, () => IsDoctor);
@@ -163,7 +174,6 @@ namespace DevCoreHospital.ViewModels.Doctor
                 return;
             }
 
-            // default selection = current user if present, otherwise first
             SelectedDoctor = Doctors.FirstOrDefault(d => d.DoctorId == _currentUser.UserId) ?? Doctors.First();
         }
 
