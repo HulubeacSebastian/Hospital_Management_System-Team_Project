@@ -8,4 +8,5 @@ public static class AppSettings
         @"Data Source=ZENBOOK\SQLEXPRESS;Initial Catalog=DevCoreHospital;Integrated Security=True;Encrypt=True;Trust Server Certificate=True";
 
     public const int DefaultDoctorId = 1;
+
 }
