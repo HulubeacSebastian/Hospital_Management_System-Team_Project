@@ -1,3 +1,5 @@
+using DevCoreHospital.Models;
+using DevCoreHospital.Repositories;
 using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels.Base;
 using System;
@@ -11,12 +13,14 @@ namespace DevCoreHospital.ViewModels.Doctor
     {
         private readonly ICurrentUserService _currentUser;
         private readonly IDoctorAppointmentService _appointmentService;
+        private readonly IShiftRepository _shiftRepository;
         private readonly IDialogService _dialogService;
 
         private int _loadVersion = 0;
         private bool _isInitializing = false;
 
         public ObservableCollection<AppointmentItemViewModel> Appointments { get; } = new();
+        public ObservableCollection<DoctorShiftItemViewModel> Shifts { get; } = new();
         public ObservableCollection<DoctorOption> Doctors { get; } = new();
 
         public enum ScheduleViewMode { Daily, Weekly }
@@ -32,6 +36,8 @@ namespace DevCoreHospital.ViewModels.Doctor
                     RaisePropertyChanged(nameof(IsDaily));
                     RaisePropertyChanged(nameof(IsWeekly));
                     RaisePropertyChanged(nameof(SelectedDateText));
+                    RaisePropertyChanged(nameof(PreviousButtonText));
+                    RaisePropertyChanged(nameof(NextButtonText));
                     _ = LoadAsync();
                 }
             }
@@ -39,6 +45,9 @@ namespace DevCoreHospital.ViewModels.Doctor
 
         public bool IsDaily => ViewMode == ScheduleViewMode.Daily;
         public bool IsWeekly => ViewMode == ScheduleViewMode.Weekly;
+
+        public string PreviousButtonText => IsWeekly ? "Previous Week" : "Previous";
+        public string NextButtonText => IsWeekly ? "Next Week" : "Next";
 
         private DoctorOption? _selectedDoctor;
         public DoctorOption? SelectedDoctor
@@ -95,7 +104,7 @@ namespace DevCoreHospital.ViewModels.Doctor
         public bool IsDoctor => string.Equals(_currentUser.Role, "Doctor", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(_currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase);
         public bool IsAccessDenied => !IsDoctor;
-        public bool IsEmpty => !IsLoading && string.IsNullOrWhiteSpace(ErrorMessage) && Appointments.Count == 0;
+        public bool IsEmpty => !IsLoading && string.IsNullOrWhiteSpace(ErrorMessage) && Appointments.Count == 0 && Shifts.Count == 0;
 
         public AsyncRelayCommand RefreshCommand { get; }
         public OldRelayCommand TodayCommand { get; }
@@ -107,16 +116,24 @@ namespace DevCoreHospital.ViewModels.Doctor
         public DoctorScheduleViewModel(
             ICurrentUserService currentUser,
             IDoctorAppointmentService appointmentService,
+            IShiftRepository shiftRepository,
             IDialogService dialogService)
         {
             _currentUser = currentUser;
             _appointmentService = appointmentService;
+            _shiftRepository = shiftRepository;
             _dialogService = dialogService;
 
             RefreshCommand = new AsyncRelayCommand(LoadAsync, () => IsDoctor);
-            TodayCommand = new OldRelayCommand(() => SelectedDate = DateTime.Today, () => IsDoctor);
-            NextDayCommand = new OldRelayCommand(() => SelectedDate = SelectedDate.AddDays(1), () => IsDoctor);
-            PreviousDayCommand = new OldRelayCommand(() => SelectedDate = SelectedDate.AddDays(-1), () => IsDoctor);
+            TodayCommand = new RelayCommand(() => SelectedDate = DateTime.Today, () => IsDoctor);
+
+            NextDayCommand = new RelayCommand(
+                () => SelectedDate = IsWeekly ? SelectedDate.AddDays(7) : SelectedDate.AddDays(1),
+                () => IsDoctor);
+
+            PreviousDayCommand = new RelayCommand(
+                () => SelectedDate = IsWeekly ? SelectedDate.AddDays(-7) : SelectedDate.AddDays(-1),
+                () => IsDoctor);
 
             DailyModeCommand = new OldRelayCommand(() => ViewMode = ScheduleViewMode.Daily, () => IsDoctor);
             WeeklyModeCommand = new OldRelayCommand(() => ViewMode = ScheduleViewMode.Weekly, () => IsDoctor);
@@ -128,10 +145,15 @@ namespace DevCoreHospital.ViewModels.Doctor
             IsLoading = true;
             ErrorMessage = "";
             Appointments.Clear();
+            Shifts.Clear();
 
             try
             {
                 await LoadDoctorsAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Failed to initialize: {ex.Message}";
             }
             finally
             {
@@ -145,26 +167,33 @@ namespace DevCoreHospital.ViewModels.Doctor
         {
             Doctors.Clear();
 
-            var allDoctors = await _appointmentService.GetAllDoctorsAsync();
-
-            foreach (var d in allDoctors.OrderBy(x => x.DoctorName))
+            try
             {
-                Doctors.Add(new DoctorOption
+                var allDoctors = await _appointmentService.GetAllDoctorsAsync();
+
+                foreach (var d in allDoctors.OrderBy(x => x.DoctorName))
                 {
-                    DoctorId = d.DoctorId,
-                    DoctorName = d.DoctorName
-                });
-            }
+                    Doctors.Add(new DoctorOption
+                    {
+                        DoctorId = d.DoctorId,
+                        DoctorName = d.DoctorName
+                    });
+                }
 
-            if (Doctors.Count == 0)
+                if (Doctors.Count == 0)
+                {
+                    ErrorMessage = "No doctors available.";
+                    SelectedDoctor = null;
+                    return;
+                }
+
+                SelectedDoctor = Doctors.FirstOrDefault(d => d.DoctorId == _currentUser.UserId) ?? Doctors.First();
+            }
+            catch (Exception ex)
             {
-                ErrorMessage = "No doctors available.";
+                ErrorMessage = $"Failed to load doctors: {ex.Message}";
                 SelectedDoctor = null;
-                return;
             }
-
-            // default selection = current user if present, otherwise first
-            SelectedDoctor = Doctors.FirstOrDefault(d => d.DoctorId == _currentUser.UserId) ?? Doctors.First();
         }
 
         public async Task LoadAsync()
@@ -175,6 +204,7 @@ namespace DevCoreHospital.ViewModels.Doctor
             {
                 ErrorMessage = "Access denied. Only doctors can view schedule.";
                 Appointments.Clear();
+                Shifts.Clear();
                 IsLoading = false;
                 RaisePropertyChanged(nameof(IsAccessDenied));
                 RaisePropertyChanged(nameof(IsEmpty));
@@ -189,6 +219,7 @@ namespace DevCoreHospital.ViewModels.Doctor
                 if (SelectedDoctor is null)
                 {
                     Appointments.Clear();
+                    Shifts.Clear();
                     IsLoading = false;
                     RaisePropertyChanged(nameof(IsEmpty));
                     return;
@@ -198,11 +229,12 @@ namespace DevCoreHospital.ViewModels.Doctor
                 DateTime from = IsDaily ? SelectedDate.Date : StartOfWeek(SelectedDate);
                 DateTime to = IsDaily ? from.AddDays(1) : from.AddDays(7);
 
-                var raw = await _appointmentService.GetUpcomingAppointmentsAsync(doctorId, from, 0, 500);
+                var rawAppointments = await _appointmentService.GetUpcomingAppointmentsAsync(doctorId, from, 0, 500);
+                var rawShifts = await Task.Run(() => _shiftRepository.GetShiftsForStaffInRange(doctorId, from, to));
 
                 if (myVersion != _loadVersion) return;
 
-                var filtered = raw
+                var filteredAppointments = rawAppointments
                     .Where(x => x.DoctorId == doctorId)
                     .Where(x =>
                     {
@@ -215,9 +247,18 @@ namespace DevCoreHospital.ViewModels.Doctor
                     .ThenBy(x => x.StartTime)
                     .ToList();
 
+                var filteredShifts = rawShifts
+                    .Where(x => x.Status != ShiftStatus.CANCELLED)
+                    .OrderBy(x => x.StartTime)
+                    .ToList();
+
                 Appointments.Clear();
-                foreach (var item in filtered)
+                foreach (var item in filteredAppointments)
                     Appointments.Add(new AppointmentItemViewModel(item));
+
+                Shifts.Clear();
+                foreach (var shift in filteredShifts)
+                    Shifts.Add(new DoctorShiftItemViewModel(shift));
             }
             catch (Exception ex)
             {

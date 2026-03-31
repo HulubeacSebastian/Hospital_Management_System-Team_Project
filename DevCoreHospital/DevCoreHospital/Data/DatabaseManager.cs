@@ -17,8 +17,7 @@ namespace DevCoreHospital.Data
             this.ConnectionString = connectionString;
         }
 
-
-        // STAFF CRUD
+        // ========================= STAFF CRUD =========================
         public List<IStaff> GetStaff()
         {
             List<IStaff> staffList = new List<IStaff>();
@@ -91,12 +90,8 @@ namespace DevCoreHospital.Data
                     cmd.ExecuteNonQuery();
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Eroare SaveStaff: {ex.Message}");
-            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare SaveStaff: {ex.Message}"); }
         }
-
 
         public void UpdateStaff(IStaff staff)
         {
@@ -106,16 +101,16 @@ namespace DevCoreHospital.Data
                 connection.Open();
                 using var cmd = connection.CreateCommand();
                 cmd.CommandText = @"
-                                UPDATE Staff SET 
-                                    first_name = @FirstName, 
-                                    last_name = @LastName, 
-                                    contact_info = @ContactInfo, 
-                                    is_available = @IsAvailable, 
-                                    license_number = @License, 
-                                    specialization = @Specialization, 
-                                    status = @Status, 
-                                    certification = @Certification
-                                WHERE staff_id = @Id";
+                    UPDATE Staff SET 
+                        first_name = @FirstName, 
+                        last_name = @LastName, 
+                        contact_info = @ContactInfo, 
+                        is_available = @IsAvailable, 
+                        license_number = @License, 
+                        specialization = @Specialization, 
+                        status = @Status, 
+                        certification = @Certification
+                    WHERE staff_id = @Id";
                 AddParameter(cmd, "@FirstName", staff.FirstName);
                 AddParameter(cmd, "@LastName", staff.LastName);
                 AddParameter(cmd, "@ContactInfo", staff.ContactInfo);
@@ -127,14 +122,10 @@ namespace DevCoreHospital.Data
                 AddParameter(cmd, "@Id", staff.StaffID);
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea personalului: {ex.Message}");
-            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea personalului: {ex.Message}"); }
         }
 
-
-        // SHIFTS CRUD
+        // ========================= SHIFTS CRUD =========================
         public List<Shift> GetShifts()
         {
             List<Shift> shiftList = new List<Shift>();
@@ -179,30 +170,11 @@ namespace DevCoreHospital.Data
                     INSERT INTO Shifts (staff_id, location, start_time, end_time, status)
                     VALUES (@staff_id, @location, @start_time, @end_time, @status)";
 
-                var pStaffId = cmd.CreateParameter();
-                pStaffId.ParameterName = "@staff_id";
-                pStaffId.Value = shift.AppointedStaff.StaffID;
-                cmd.Parameters.Add(pStaffId);
-
-                var pLocation = cmd.CreateParameter();
-                pLocation.ParameterName = "@location";
-                pLocation.Value = shift.Location ?? string.Empty;
-                cmd.Parameters.Add(pLocation);
-
-                var pStart = cmd.CreateParameter();
-                pStart.ParameterName = "@start_time";
-                pStart.Value = shift.StartTime;
-                cmd.Parameters.Add(pStart);
-
-                var pEnd = cmd.CreateParameter();
-                pEnd.ParameterName = "@end_time";
-                pEnd.Value = shift.EndTime;
-                cmd.Parameters.Add(pEnd);
-
-                var pStatus = cmd.CreateParameter();
-                pStatus.ParameterName = "@status";
-                pStatus.Value = shift.Status.ToString();
-                cmd.Parameters.Add(pStatus);
+                AddParameter(cmd, "@staff_id", shift.AppointedStaff.StaffID);
+                AddParameter(cmd, "@location", shift.Location ?? string.Empty);
+                AddParameter(cmd, "@start_time", shift.StartTime);
+                AddParameter(cmd, "@end_time", shift.EndTime);
+                AddParameter(cmd, "@status", shift.Status.ToString());
 
                 return cmd.ExecuteNonQuery() > 0;
             }
@@ -212,7 +184,6 @@ namespace DevCoreHospital.Data
                 return false;
             }
         }
-
 
         public void AddNewShift(Shift newShift)
         {
@@ -235,10 +206,7 @@ namespace DevCoreHospital.Data
 
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Eroare la crearea turei noi: {ex.Message}");
-            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare la crearea turei noi: {ex.Message}"); }
         }
 
         public void UpdateShift(Shift shift)
@@ -264,10 +232,7 @@ namespace DevCoreHospital.Data
                 AddParameter(cmd, "@Id", shift.Id);
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea turei: {ex.Message}");
-            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare la actualizarea turei: {ex.Message}"); }
         }
 
         public void DeleteShift(int shiftId)
@@ -281,10 +246,7 @@ namespace DevCoreHospital.Data
                 AddParameter(cmd, "@Id", shiftId);
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Eroare la stergerea turei: {ex.Message}");
-            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare la stergerea turei: {ex.Message}"); }
         }
 
         public void SaveShifts(List<Shift> shiftList)
@@ -313,14 +275,224 @@ namespace DevCoreHospital.Data
                     cmd.ExecuteNonQuery();
                 }
             }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare SaveShifts: {ex.Message}"); }
+        }
+
+        public double GetShiftHoursFromDb(int shiftId)
+        {
+            double hours = 0;
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = "SELECT start_time, end_time FROM Shifts WHERE shift_id = @ShiftId";
+                AddParameter(cmd, "@ShiftId", shiftId);
+
+                using var reader = cmd.ExecuteReader();
+                if (reader.Read())
+                {
+                    DateTime start = reader.GetDateTime(0);
+                    DateTime end = reader.GetDateTime(1);
+                    hours = (end - start).TotalHours;
+                }
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error GetShiftHoursFromDb: {ex.Message}"); }
+            return hours;
+        }
+
+        public bool IsStaffWorkingDuring(int staffId, DateTime start, DateTime end)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT COUNT(*)
+                    FROM Shifts
+                    WHERE staff_id = @StaffId
+                      AND start_time < @EndTime
+                      AND end_time > @StartTime
+                      AND status IN ('SCHEDULED', 'ACTIVE')";
+                AddParameter(cmd, "@StaffId", staffId);
+                AddParameter(cmd, "@StartTime", start);
+                AddParameter(cmd, "@EndTime", end);
+
+                var result = cmd.ExecuteScalar();
+                return Convert.ToInt32(result) > 0;
+            }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Eroare SaveShifts: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Eroare IsStaffWorkingDuring: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool ReassignShiftToStaff(int shiftId, int newStaffId)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = "UPDATE Shifts SET staff_id = @StaffId WHERE shift_id = @ShiftId;";
+                AddParameter(cmd, "@StaffId", newStaffId);
+                AddParameter(cmd, "@ShiftId", shiftId);
+                return cmd.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare ReassignShiftToStaff: {ex.Message}");
+                return false;
             }
         }
 
 
-        // MEDICINES
+        // ========================= SWAP REQUESTS (NEW) =========================
+        public int CreateShiftSwapRequest(ShiftSwapRequest request)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO ShiftSwapRequests (shift_id, requester_id, colleague_id, requested_at, status)
+                    VALUES (@ShiftId, @RequesterId, @ColleagueId, @RequestedAt, @Status);
+                    SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                AddParameter(cmd, "@ShiftId", request.ShiftId);
+                AddParameter(cmd, "@RequesterId", request.RequesterId);
+                AddParameter(cmd, "@ColleagueId", request.ColleagueId);
+                AddParameter(cmd, "@RequestedAt", request.RequestedAt);
+                AddParameter(cmd, "@Status", request.Status.ToString());
+
+                var result = cmd.ExecuteScalar();
+                return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare CreateShiftSwapRequest: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public List<ShiftSwapRequest> GetPendingSwapRequestsForColleague(int colleagueId)
+        {
+            var items = new List<ShiftSwapRequest>();
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT swap_id, shift_id, requester_id, colleague_id, requested_at, status
+                    FROM ShiftSwapRequests
+                    WHERE colleague_id = @ColleagueId AND status = 'PENDING'
+                    ORDER BY requested_at DESC";
+                AddParameter(cmd, "@ColleagueId", colleagueId);
+
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    Enum.TryParse<ShiftSwapRequestStatus>(r.GetString(5), true, out var st);
+                    items.Add(new ShiftSwapRequest
+                    {
+                        SwapId = r.GetInt32(0),
+                        ShiftId = r.GetInt32(1),
+                        RequesterId = r.GetInt32(2),
+                        ColleagueId = r.GetInt32(3),
+                        RequestedAt = r.GetDateTime(4),
+                        Status = st
+                    });
+                }
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Eroare GetPendingSwapRequestsForColleague: {ex.Message}"); }
+            return items;
+        }
+
+        public ShiftSwapRequest? GetShiftSwapRequestById(int swapId)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT swap_id, shift_id, requester_id, colleague_id, requested_at, status
+                    FROM ShiftSwapRequests
+                    WHERE swap_id = @SwapId";
+                AddParameter(cmd, "@SwapId", swapId);
+
+                using var r = cmd.ExecuteReader();
+                if (!r.Read()) return null;
+
+                Enum.TryParse<ShiftSwapRequestStatus>(r.GetString(5), true, out var st);
+                return new ShiftSwapRequest
+                {
+                    SwapId = r.GetInt32(0),
+                    ShiftId = r.GetInt32(1),
+                    RequesterId = r.GetInt32(2),
+                    ColleagueId = r.GetInt32(3),
+                    RequestedAt = r.GetDateTime(4),
+                    Status = st
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare GetShiftSwapRequestById: {ex.Message}");
+                return null;
+            }
+        }
+
+        public bool UpdateShiftSwapRequestStatus(int swapId, string status)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = "UPDATE ShiftSwapRequests SET status = @Status WHERE swap_id = @SwapId;";
+                AddParameter(cmd, "@Status", status);
+                AddParameter(cmd, "@SwapId", swapId);
+                return cmd.ExecuteNonQuery() > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Eroare UpdateShiftSwapRequestStatus: {ex.Message}");
+                return false;
+            }
+        }
+
+
+        // ========================= NOTIFICATIONS (NEW) =========================
+        public void AddNotification(int recipientStaffId, string title, string message)
+        {
+            try
+            {
+                using var connection = GetConnection();
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO Notifications (recipient_staff_id, title, message, created_at, is_read)
+                    VALUES (@RecipientId, @Title, @Message, @CreatedAt, 0)";
+                AddParameter(cmd, "@RecipientId", recipientStaffId);
+                AddParameter(cmd, "@Title", title);
+                AddParameter(cmd, "@Message", message);
+                AddParameter(cmd, "@CreatedAt", DateTime.UtcNow);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Notification fallback -> To:{recipientStaffId} | {title} | {message}");
+                System.Diagnostics.Debug.WriteLine($"Eroare AddNotification: {ex.Message}");
+            }
+        }
+
+
+        // ========================= MEDICINES =========================
         public int GetMedicinesSold(int pharmacistStaffId, int month, int year)
         {
             try
@@ -343,7 +515,7 @@ namespace DevCoreHospital.Data
         }
 
 
-        // APPOINTMENTS CRUD
+        // ========================= APPOINTMENTS CRUD =========================
         public async Task<List<Appointment>> GetUpcomingAppointmentsAsync(int doctorId, DateTime fromDate, DateTime toDate, int skip, int take)
         {
             var items = new List<Appointment>();
@@ -352,7 +524,8 @@ namespace DevCoreHospital.Data
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT a.appointment_id, a.doctor_id, s.first_name + ' ' + s.last_name AS DoctorName, 
+                SELECT a.appointment_id, a.doctor_id,
+                       LTRIM(RTRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, '')))) AS DoctorName,
                        a.patient_id, a.start_time, a.end_time, a.status
                 FROM Appointments a
                 INNER JOIN Staff s ON s.staff_id = a.doctor_id
@@ -435,7 +608,7 @@ namespace DevCoreHospital.Data
         }
 
 
-        // DOCTOR
+        // ========================= DOCTOR =========================
         public async Task UpdateDoctorStatusAsync(int doctorId, string status)
         {
             using var conn = GetConnection();
@@ -453,17 +626,21 @@ namespace DevCoreHospital.Data
             await conn.OpenAsync();
 
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT staff_id, first_name + ' ' + last_name FROM Staff WHERE role = 'Doctor' ORDER BY first_name;";
+            cmd.CommandText = @"SELECT staff_id,
+                                       LTRIM(RTRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))))
+                                FROM Staff
+                                WHERE role = 'Doctor'
+                                ORDER BY first_name;";
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
-                items.Add((reader.GetInt32(0), reader.GetString(1)));
+                items.Add((reader.GetInt32(0), reader.IsDBNull(1) ? "" : reader.GetString(1)));
 
             return items;
         }
 
 
-        // UTILS
+        // ========================= UTILS =========================
         internal DbConnection GetConnection()
         {
             var connectionFactory = new SqlConnectionFactory(ConnectionString);
@@ -480,16 +657,21 @@ namespace DevCoreHospital.Data
 
         private Appointment MapReaderToAppointment(DbDataReader reader, bool hasDoctorName)
         {
-            DateTime startDt = reader.GetDateTime(reader.GetOrdinal("start_time"));
-            DateTime endDt = reader.GetDateTime(reader.GetOrdinal("end_time"));
-            int patId = reader.GetInt32(reader.GetOrdinal("patient_id"));
+            int startOrdinal = reader.GetOrdinal("start_time");
+            int endOrdinal = reader.GetOrdinal("end_time");
+            int patientOrdinal = reader.GetOrdinal("patient_id");
             int statusOrdinal = reader.GetOrdinal("status");
+            int doctorNameOrdinal = hasDoctorName ? reader.GetOrdinal("DoctorName") : -1;
+
+            DateTime startDt = reader.IsDBNull(startOrdinal) ? DateTime.Now : reader.GetDateTime(startOrdinal);
+            DateTime endDt = reader.IsDBNull(endOrdinal) ? startDt : reader.GetDateTime(endOrdinal);
+            int patId = reader.IsDBNull(patientOrdinal) ? 0 : reader.GetInt32(patientOrdinal);
 
             return new Appointment
             {
                 Id = reader.GetInt32(reader.GetOrdinal("appointment_id")),
                 DoctorId = reader.GetInt32(reader.GetOrdinal("doctor_id")),
-                DoctorName = hasDoctorName ? reader.GetString(reader.GetOrdinal("DoctorName")) : "",
+                DoctorName = hasDoctorName && !reader.IsDBNull(doctorNameOrdinal) ? reader.GetString(doctorNameOrdinal) : "",
                 PatientName = "PAT-" + patId,
                 Date = startDt.Date,
                 StartTime = startDt.TimeOfDay,

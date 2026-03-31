@@ -12,14 +12,17 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using DevCoreHospital.Models;
-using DevCoreHospital.Repositories;
-using DevCoreHospital.Configuration;
+using DevCoreHospital.Repositories; // Points to your new Repository
+using DevCoreHospital.Configuration; // For AppSettings
+using DevCoreHospital.ViewModels.Base;
 
 namespace DevCoreHospital.ViewModels
 {
     public partial class MedicalEvaluationViewModel : ObservableObject
     {
+        // 1. Switch from DataService to Repository
         private readonly EvaluationsRepository _repository = new();
+
         private List<MedicalEvaluation> _allRecords = new List<MedicalEvaluation>();
 
         // 1. Using [ObservableProperty] - The toolkit creates the Public version (e.g. Symptoms) automatically.
@@ -37,6 +40,14 @@ namespace DevCoreHospital.ViewModels
 
         public ObservableCollection<MedicalEvaluation> PastEvaluations { get; } = new();
 
+        // 2. Dynamic Patient ID (No longer a constant!)
+        private string _patientId = string.Empty;
+        public string PatientId
+        {
+            get => _patientId;
+            set => SetProperty(ref _patientId, value);
+        }
+
         private MedicalEvaluation? _selectedEvaluation;
         public MedicalEvaluation? SelectedEvaluation
         {
@@ -47,9 +58,9 @@ namespace DevCoreHospital.ViewModels
                 {
                     if (value != null)
                     {
-                        Symptoms = value.Symptoms ?? string.Empty;
-                        MedsList = value.MedsList ?? string.Empty;
-                        DoctorNotes = value.Notes ?? string.Empty;
+                        Symptoms = value.Symptoms;
+                        MedsList = value.MedsList;
+                        DoctorNotes = value.Notes;
                     }
                     else
                     {
@@ -86,8 +97,23 @@ namespace DevCoreHospital.ViewModels
             InitializeSession();
         }
 
+        public bool IsEmptyStateVisible => !IsLoading && PastEvaluations.Count == 0;
+        public Visibility EmptyStateVisibility => IsEmptyStateVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        public RelayCommand SaveDiagnosisCommand { get; }
+        public RelayCommand DeleteEvaluationCommand { get; } // Added back
+
+        public MedicalEvaluationViewModel()
+        {
+            SaveDiagnosisCommand = new RelayCommand(SaveDiagnosis, CanSaveDiagnosis);
+            DeleteEvaluationCommand = new RelayCommand(ExecuteDeletion, () => IsEditing);
+
+            InitializeSession();
+        }
+
         private void InitializeSession()
         {
+            // Task: Fetch actual active patient from SQL
             PatientId = _repository.GetActivePatientId(AppSettings.DefaultDoctorId);
             PopulateHistory();
             CheckDoctorFatigue();
@@ -95,21 +121,11 @@ namespace DevCoreHospital.ViewModels
 
         partial void OnSearchTextChanged(string value)
         {
-            PastEvaluations.Clear();
-            var filtered = string.IsNullOrWhiteSpace(value)
-                ? _allRecords
-                : _allRecords.Where(r => r.PatientId.Contains(value, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(currentMeds)) { IsConflictVisible = false; return; }
 
-            foreach (var record in filtered) { PastEvaluations.Add(record); }
-            OnPropertyChanged(nameof(EmptyStateVisibility));
-        }
-
-        partial void OnMedsListChanged(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) { IsConflictVisible = false; return; }
-
-            string? warning = _repository.GetHighRiskMedicineWarning(value);
-            if (warning != null)
+            // Task 12: Check database for high-risk medicine warnings
+            string warning = _repository.GetHighRiskMedicineWarning(currentMeds);
+            if (!string.IsNullOrEmpty(warning))
             {
                 ConflictWarning = warning;
                 IsConflictVisible = true;
@@ -118,14 +134,22 @@ namespace DevCoreHospital.ViewModels
             {
                 IsConflictVisible = false;
             }
-            SaveDiagnosisCommand.NotifyCanExecuteChanged();
         }
 
         private bool CanSaveDiagnosis()
         {
             if (IsFatigued) return false;
-            if (string.IsNullOrWhiteSpace(Symptoms) || string.IsNullOrWhiteSpace(DoctorNotes)) return false;
-            if (IsConflictVisible && !IsRiskAssumed) return false;
+            if (string.IsNullOrWhiteSpace(Symptoms) || string.IsNullOrWhiteSpace(DoctorNotes))
+            {
+                ValidationError = "⚠️ Symptoms and Doctor Notes are required.";
+                return false;
+            }
+            if (IsConflictVisible && !IsRiskAssumed)
+            {
+                ValidationError = "⚠️ You must acknowledge the clinical risk.";
+                return false;
+            }
+            ValidationError = string.Empty;
             return true;
         }
 
@@ -133,59 +157,83 @@ namespace DevCoreHospital.ViewModels
         {
             if (IsEditing && SelectedEvaluation != null)
             {
-                _repository.UpdateEvaluationNotes(SelectedEvaluation.EvaluationID, DoctorNotes);
+                _repository.UpdateEvaluationNotes(SelectedEvaluation.EvaluationID, this.DoctorNotes);
+                SelectedEvaluation = null;
             }
             else
             {
-                var eval = new MedicalEvaluation
+                var newRecord = new MedicalEvaluation
                 {
-                    PatientId = PatientId,
+                    PatientId = this.PatientId, // Use dynamic ID
                     Symptoms = IsConflictVisible && IsRiskAssumed ? $"⚠️ [RISK] - {Symptoms}" : Symptoms,
-                    MedsList = MedsList,
-                    Notes = DoctorNotes,
+                    MedsList = this.MedsList,
+                    Notes = this.DoctorNotes,
                     EvaluationDate = DateTime.Now,
                     Evaluator = new DevCoreHospital.Models.Doctor { StaffID = AppSettings.DefaultDoctorId }
                 };
-                _repository.SaveEvaluation(eval);
+
+                _repository.SaveEvaluation(newRecord);
             }
 
             ResetForm();
             PopulateHistory();
         }
 
+        public void ResetForm()
+        {
+            Symptoms = string.Empty;
+            MedsList = string.Empty;
+            DoctorNotes = string.Empty;
+            IsRiskAssumed = false;
+            IsConflictVisible = false;
+            SelectedEvaluation = null;
+
+            RaisePropertyChanged(nameof(Symptoms));
+            RaisePropertyChanged(nameof(MedsList));
+            RaisePropertyChanged(nameof(DoctorNotes));
+            RaisePropertyChanged(nameof(IsRiskAssumed));
+            RaisePropertyChanged(nameof(IsConflictVisible));
+            RaisePropertyChanged(nameof(ConflictVisibility));
+            RaisePropertyChanged(nameof(NotesBackground));
+            RaisePropertyChanged(nameof(SelectedEvaluation));
+            RaisePropertyChanged(nameof(IsEditing));
+
+            RefreshButtonState();
+        }
+
+        private void RefreshButtonState()
+        {
+            SaveDiagnosisCommand.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(ValidationError));
+        }
+
         public async void PopulateHistory()
         {
             IsLoading = true;
             PastEvaluations.Clear();
-            await Task.Delay(500);
+            await Task.Delay(800);
+
+            // Pull real history from SQL
             _allRecords = _repository.GetEvaluationsByDoctor(AppSettings.DefaultDoctorId.ToString());
-            foreach (var item in _allRecords) { PastEvaluations.Add(item); }
+
+            ApplyFilter();
             IsLoading = false;
             OnPropertyChanged(nameof(EmptyStateVisibility));
         }
 
         private void CheckDoctorFatigue()
         {
-            double hours = _repository.GetDoctorFatigueHours(AppSettings.DefaultDoctorId.ToString());
-            IsFatigued = hours >= 12.0;
+            // Task 33: Check SQL for total duty hours
+            double fatigueHours = _repository.GetDoctorFatigueHours(AppSettings.DefaultDoctorId.ToString());
+            IsFatigued = fatigueHours >= 12.0;
         }
 
         public void ExecuteDeletion()
         {
-            if (SelectedEvaluation != null)
-            {
-                _repository.DeleteEvaluation(SelectedEvaluation.EvaluationID);
-                ResetForm();
-                PopulateHistory();
-            }
-        }
-
-        public void ResetForm()
-        {
-            Symptoms = MedsList = DoctorNotes = string.Empty;
-            IsRiskAssumed = IsConflictVisible = IsEditing = false;
-            SelectedEvaluation = null;
-            SaveDiagnosisCommand.NotifyCanExecuteChanged();
+            if (SelectedEvaluation == null) return;
+            _repository.DeleteEvaluation(SelectedEvaluation.EvaluationID);
+            ResetForm();
+            PopulateHistory();
         }
     }
 }
