@@ -68,7 +68,6 @@ namespace DevCoreHospital.Services
 
         // ========================= VIEW MODEL METHODS =========================
 
-        // Fix for CS1501: Accepts the 3 arguments passed from AdminShiftViewModel
         public List<IStaff> GetFilteredStaff(string location, string requiredSpecialization, string requiredCertification)
         {
             var allStaff = _staffRepo.LoadAllStaff();
@@ -97,7 +96,6 @@ namespace DevCoreHospital.Services
             return filteredStaff;
         }
 
-        // Fix for CS1503: Accepts a 'Shift' object instead of an 'int' ID
         public List<IStaff> FindStaffReplacements(Shift shift)
         {
             if (shift == null || shift.AppointedStaff == null) return new List<IStaff>();
@@ -145,7 +143,15 @@ namespace DevCoreHospital.Services
                 return new List<IStaff>();
             }
 
-            return _staffRepo.GetPotentialSwapColleagues(requester);
+            // Get colleagues with the same role/specialization who are marked as Available
+            var potentialColleagues = _staffRepo.GetPotentialSwapColleagues(requester);
+
+            // Filter out colleagues who are ALREADY working during this shift's time interval
+            var availableColleagues = potentialColleagues
+                .Where(c => !_shiftRepo.IsStaffWorkingDuring(c.StaffID, shift.StartTime, shift.EndTime))
+                .ToList();
+
+            return availableColleagues;
         }
 
         public bool RequestShiftSwap(int requesterId, int shiftId, int colleagueId, out string message)
@@ -182,14 +188,14 @@ namespace DevCoreHospital.Services
             var eligible = _staffRepo.GetPotentialSwapColleagues(requester).Any(c => c.StaffID == colleagueId);
             if (!eligible)
             {
-                message = "Selected colleague is not from the same role/profile.";
+                message = "Selected colleague is not from the same role/profile or is not currently available.";
                 return false;
             }
 
             var isWorking = _shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime);
-            if (!isWorking)
+            if (isWorking)
             {
-                message = "Selected colleague is not working during that time interval.";
+                message = "Selected colleague is already working during that time interval.";
                 return false;
             }
 
@@ -254,9 +260,9 @@ namespace DevCoreHospital.Services
                 return false;
             }
 
-            if (!_shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime))
+            if (_shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime))
             {
-                message = "You are no longer working in that interval.";
+                message = "You are already scheduled to work in that interval.";
                 return false;
             }
 
