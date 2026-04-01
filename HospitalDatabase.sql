@@ -122,10 +122,23 @@ CREATE TABLE Notifications (
     is_read BIT NOT NULL DEFAULT 0,
     CONSTRAINT FK_Notif_Staff FOREIGN KEY (recipient_staff_id) REFERENCES Staff(staff_id)
 );
+
+-- ER DISPATCH TABLES
+CREATE TABLE ER_Requests (
+    request_id INT IDENTITY(101,1) PRIMARY KEY,
+    specialization VARCHAR(100) NOT NULL,
+    [location] VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL CONSTRAINT DF_ER_Requests_created_at DEFAULT GETDATE(),
+    [status] VARCHAR(50) NOT NULL,
+    assigned_doctor_id INT NULL,
+    assigned_doctor_name VARCHAR(200) NULL,
+    CONSTRAINT CK_ER_Requests_status CHECK (LOWER([status]) IN ('pending','assigned','unmatched','completed')),
+    CONSTRAINT FK_ER_Requests_staff FOREIGN KEY (assigned_doctor_id) REFERENCES Staff(staff_id)
+);
 GO
 
 -- ---------------------------------------------------------
--- 3. INSERT TEST DATA
+-- 3. INSERT STATIC TEST DATA
 -- ---------------------------------------------------------
 
 -- Insert High Risk Medicines
@@ -135,10 +148,10 @@ VALUES
 ('Insulin', 'Glucose conflict: Requires immediate sugar level monitoring.'),
 ('Penicillin', 'Allergy Warning: History of anaphylaxis in this department.');
 
--- Insert Staff (Combined existing staff + specific users needed for shift swap tests)
+-- Insert Staff (Combined existing staff, shift swap tests, and ER/Fatigue Audit tests)
 INSERT INTO Staff ([role], department, first_name, last_name, is_available, specialization, status, contact_info, license_number, years_of_experience, certification)
 VALUES 
--- Doctors
+-- Original Doctors
 ('Doctor', 'Cardiology', 'John', 'Smith', 1, 'Cardiologist', 'Available', 'info1', 'A1234', 20, NULL),
 ('Doctor', 'Cardiology', 'Alice', 'Jones', 1, 'Cardiologist', 'Available', 'info2', 'B4321', 15, NULL),
 ('Doctor', 'Diagnostic Medicine', 'Gregory', 'House', 1, 'Diagnostician', 'Available', 'info4', 'C9876', 25, NULL),
@@ -146,6 +159,12 @@ VALUES
 ('Doctor', 'Endocrinology', 'Lisa', 'Cuddy', 0, 'Endocrinologist', 'Off_Duty', 'info6', 'E7777', 18, NULL),
 ('Doctor', 'Cardiology', 'Mihai', 'Popescu', 1, 'Cardiologist', 'Off_Duty', 'info_mihai', 'DOC-1003', 8, NULL),
 ('Doctor', 'Emergency', 'Andreea', 'Ionescu', 1, 'Emergency', 'In_Examination', 'info_andreea', 'DOC-1004', 11, NULL),
+-- ER/Fatigue Audit Doctors
+('Doctor', 'Cardiology', 'Michael', 'Scott', 1, 'Cardiologist', 'Available', 'michael.scott@local', 'Cardio-001', 8, NULL),
+('Doctor', 'Cardiology', 'Sarah', 'Jenkins', 1, 'Cardiologist', 'Available', 'sarah.jenkins@local', 'Cardio-002', 5, NULL),
+('Doctor', 'Cardiology', 'David', 'Bradley', 1, 'Cardiologist', 'Available', 'david.bradley@local', 'Cardio-003', 12, NULL),
+('Doctor', 'Emergency', 'Emma', 'Thompson', 1, 'Surgeon', 'Available', 'emma.thompson@local', 'Surg-001', 9, NULL),
+('Doctor', 'Emergency', 'James', 'Wilson_ER', 0, 'Surgeon', 'In_Examination', 'james.wilson.er@local', 'Surg-002', 11, NULL),
 -- Pharmacists
 ('Pharmacist', 'Pharmacy', 'Robert', 'White', 0, NULL, 'Off_Duty', 'info3', NULL, 13, 'BPS'),
 ('Pharmacist', 'Pharmacy', 'Jane', 'Doe', 1, NULL, 'Available', 'info7', NULL, 8, 'PharmD'),
@@ -200,9 +219,12 @@ INSERT INTO Hangout_Participants (hangout_id, staff_id)
 VALUES (1, 1), (1, 2), (1, 8), (1, 9), (2, 3), (2, 4);
 GO
 
+
 -- ---------------------------------------------------------
--- 4. SETUP SHIFT SWAP TEST DATA (Dynamic Generation)
+-- 4. SETUP DYNAMIC TEST DATA (Shift Swapping & ER Dispatch)
 -- ---------------------------------------------------------
+
+-- 4A. SHIFT SWAPPING DYNAMIC SETUP
 DECLARE @John INT      = (SELECT TOP 1 staff_id FROM Staff WHERE first_name='John' AND last_name='Smith');
 DECLARE @Alice INT     = (SELECT TOP 1 staff_id FROM Staff WHERE first_name='Alice' AND last_name='Jones');
 DECLARE @Mihai INT     = (SELECT TOP 1 staff_id FROM Staff WHERE first_name='Mihai' AND last_name='Popescu');
@@ -212,7 +234,6 @@ DECLARE @Elena INT     = (SELECT TOP 1 staff_id FROM Staff WHERE first_name='Ele
 
 DECLARE @Now DATETIME = GETDATE();
 
--- Generate Future Test Shifts for Swapping
 INSERT INTO Shifts (staff_id, location, start_time, end_time, status, is_active)
 VALUES 
 (@John, 'Cardio Ward A', DATEADD(HOUR, 24, @Now), DATEADD(HOUR, 32, @Now), 'SCHEDULED', 1),
@@ -222,30 +243,61 @@ VALUES
 (@Robert, 'Main Pharmacy', DATEADD(HOUR, 24, @Now), DATEADD(HOUR, 32, @Now), 'SCHEDULED', 1),
 (@Elena, 'Main Pharmacy', DATEADD(HOUR, 24, @Now), DATEADD(HOUR, 32, @Now), 'SCHEDULED', 1);
 
--- Get the newly generated Shift IDs
 DECLARE @JohnShift INT = (SELECT TOP 1 shift_id FROM Shifts WHERE staff_id = @John AND start_time > @Now ORDER BY start_time);
 DECLARE @RobertShift INT = (SELECT TOP 1 shift_id FROM Shifts WHERE staff_id = @Robert AND start_time > @Now ORDER BY start_time);
 
--- Generate Pending Swap Requests
 INSERT INTO ShiftSwapRequests (shift_id, requester_id, colleague_id, requested_at, status)
 VALUES 
 (@JohnShift, @John, @Alice, DATEADD(MINUTE,-30,GETUTCDATE()), 'PENDING'),
 (@JohnShift, @John, @Mihai, DATEADD(MINUTE,-25,GETUTCDATE()), 'PENDING'),
 (@RobertShift, @Robert, @Elena, DATEADD(MINUTE,-20,GETUTCDATE()), 'PENDING');
 
--- Generate Relevant Notifications
 INSERT INTO Notifications (recipient_staff_id, title, message, created_at, is_read)
 VALUES
 (@Alice, 'New Shift Swap Request', 'John Smith requested a swap for his upcoming Cardiology shift.', GETUTCDATE(), 0),
 (@Elena, 'New Shift Swap Request', 'Robert White requested a pharmacy shift swap.', DATEADD(MINUTE,-10,GETUTCDATE()), 0),
 (@John,  'Reminder', 'Check your swap requests status from Incoming Swap Requests.', DATEADD(HOUR,-1,GETUTCDATE()), 1);
+
+-- 4B. FATIGUE AUDIT & ER DISPATCH DYNAMIC SETUP
+DECLARE @Req3OverloadId INT = (SELECT TOP 1 staff_id FROM dbo.Staff WHERE first_name = 'Michael' AND last_name = 'Scott' ORDER BY staff_id DESC);
+DECLARE @Req3LowId INT = (SELECT TOP 1 staff_id FROM dbo.Staff WHERE first_name = 'Sarah' AND last_name = 'Jenkins' ORDER BY staff_id DESC);
+DECLARE @Req3HighId INT = (SELECT TOP 1 staff_id FROM dbo.Staff WHERE first_name = 'David' AND last_name = 'Bradley' ORDER BY staff_id DESC);
+DECLARE @Req4AvailableId INT = (SELECT TOP 1 staff_id FROM dbo.Staff WHERE first_name = 'Emma' AND last_name = 'Thompson' ORDER BY staff_id DESC);
+DECLARE @Req4BusyId INT = (SELECT TOP 1 staff_id FROM dbo.Staff WHERE first_name = 'James' AND last_name = 'Wilson_ER' ORDER BY staff_id DESC);
+
+INSERT INTO dbo.Shifts (staff_id, [location], start_time, end_time, [status], is_active)
+VALUES
+(@Req3OverloadId, 'Ward A', '2026-03-30 08:00:00', '2026-03-30 20:00:00', 'Scheduled', 0),
+(@Req3OverloadId, 'Ward A', '2026-03-31 06:00:00', '2026-03-31 18:00:00', 'Scheduled', 0),
+(@Req3OverloadId, 'Ward A', '2026-04-01 08:00:00', '2026-04-01 20:00:00', 'Scheduled', 0),
+(@Req3OverloadId, 'Ward A', '2026-04-02 08:00:00', '2026-04-02 20:00:00', 'Scheduled', 0),
+(@Req3OverloadId, 'Ward A', '2026-04-03 08:00:00', '2026-04-03 20:00:00', 'Scheduled', 0),
+(@Req3OverloadId, 'Ward A', '2026-04-04 08:00:00', '2026-04-04 14:00:00', 'Scheduled', 0),
+(@Req3LowId, 'Ward B', '2026-03-20 12:00:00', '2026-03-20 16:00:00', 'Completed', 0),
+(@Req3HighId, 'Ward B', '2026-03-18 08:00:00', '2026-03-18 16:00:00', 'Completed', 0),
+(@Req3HighId, 'Ward B', '2026-03-22 08:00:00', '2026-03-22 16:00:00', 'Completed', 0),
+(@Req3HighId, 'Ward B', '2026-03-26 08:00:00', '2026-03-26 16:00:00', 'Completed', 0),
+(@Req4AvailableId, 'Ward A', '2026-03-30 06:00:00', '2026-03-30 18:00:00', 'Active', 1),
+(@Req4BusyId, 'Ward A', '2026-03-30 07:00:00', '2026-03-30 15:00:00', 'Active', 1);
+
+INSERT INTO dbo.ER_Requests (specialization, [location], created_at, [status], assigned_doctor_id, assigned_doctor_name)
+VALUES
+('Surgeon', 'Ward A', '2026-03-30 09:45:00', 'Pending', null, null),
+('Cardiologist', 'Ward A', '2026-03-30 09:50:00', 'Pending', null, null),
+('Neurology', 'Ward A', '2026-03-30 09:55:00', 'Pending', null, null),
+('Surgeon', 'Ward A', '2026-03-30 09:59:00', 'Pending', null, null),
+('Pediatrics', 'Ward A', '2026-03-30 10:00:00', 'Pending', null, null);
 GO
 
 -- ---------------------------------------------------------
 -- 5. VALIDATION OUTPUT
 -- ---------------------------------------------------------
+use HospitalDatabase;
+USE HospitalDatabase;
+GO
+
 SELECT * FROM Staff;
 SELECT * FROM Shifts;
 SELECT * FROM ShiftSwapRequests;
 SELECT * FROM Notifications;
-GO
+SELECT * FROM ER_Requests;
