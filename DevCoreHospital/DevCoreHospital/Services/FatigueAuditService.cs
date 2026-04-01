@@ -1,5 +1,5 @@
-﻿using DevCoreHospital.Data;
-using DevCoreHospital.Models;
+﻿using DevCoreHospital.Models;
+using DevCoreHospital.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,26 +11,31 @@ namespace DevCoreHospital.Services
         private const double MaxWeeklyHours = 60.0;
         private static readonly TimeSpan MinRestGap = TimeSpan.FromHours(12);
 
-        private readonly IFatigueShiftDataSource _dataSource;
+        private readonly IFatigueAuditRepository _repository;
 
-        public FatigueAuditService(IFatigueShiftDataSource dataSource)
+        public FatigueAuditService(IFatigueAuditRepository repository)
         {
-            _dataSource = dataSource;
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         }
-
-        public IFatigueShiftDataSource GetDataSource() => _dataSource;
 
         public AutoAuditResult RunAutoAudit(DateTime weekStart)
         {
             var normalizedWeekStart = StartOfWeek(weekStart);
             var normalizedWeekEnd = normalizedWeekStart.AddDays(7);
-            var weeklyShifts = _dataSource.GetShiftsForWeek(normalizedWeekStart)
+
+            var allShifts = _repository.GetAllShifts()
+                .Where(IsAuditableShift)
+                .ToList();
+
+            var weeklyShifts = allShifts
+                .Where(s => OverlapsWindow(s, normalizedWeekStart, normalizedWeekEnd))
                 .OrderBy(s => s.StaffId)
                 .ThenBy(s => s.Start)
                 .ToList();
 
-            var allShifts = _dataSource.GetAllShifts();
-            var staffProfiles = _dataSource.GetStaffProfiles();
+            var staffProfiles = _repository.GetStaffProfiles()
+                .Where(IsEligibleStaff)
+                .ToList();
             var violations = new List<AuditViolation>();
 
             foreach (var group in weeklyShifts.GroupBy(s => s.StaffId))
@@ -124,9 +129,9 @@ namespace DevCoreHospital.Services
                     .Where(s => s.StaffId != violatingShiftInPlan.StaffId)
                     .Where(s => string.Equals(s.Role, violatingShiftInPlan.Role, StringComparison.OrdinalIgnoreCase))
                     .Where(s => string.Equals(s.Specialization, violatingShiftInPlan.Specialization, StringComparison.OrdinalIgnoreCase))
-                    .Where(s => s.IsAvailable)
+                    .Where(s => s.IsAvailable == true)
                     .Where(s => CanTakeShift(s.StaffId, violatingShiftInPlan, effectiveShifts, weekStart))
-                    .OrderBy(s => _dataSource.GetMonthlyWorkedHours(s.StaffId, violatingShiftInPlan.Start.Year, violatingShiftInPlan.Start.Month))
+                    .OrderBy(s => GetMonthlyWorkedHoursFromShifts(s.StaffId, violatingShiftInPlan.Start.Year, violatingShiftInPlan.Start.Month, effectiveShifts))
                     .ThenBy(s => s.FullName)
                     .ToList();
 
@@ -145,7 +150,7 @@ namespace DevCoreHospital.Services
                     continue;
                 }
 
-                var monthlyHours = _dataSource.GetMonthlyWorkedHours(candidate.StaffId, violatingShiftInPlan.Start.Year, violatingShiftInPlan.Start.Month);
+                var monthlyHours = GetMonthlyWorkedHoursFromShifts(candidate.StaffId, violatingShiftInPlan.Start.Year, violatingShiftInPlan.Start.Month, effectiveShifts);
                 output.Add(new AutoSuggestRecommendation
                 {
                     ShiftId = violatingShiftInPlan.Id,
@@ -206,8 +211,35 @@ namespace DevCoreHospital.Services
                 Role = source.Role,
                 Specialization = source.Specialization,
                 Start = source.Start,
-                End = source.End
+                End = source.End,
+                Status = source.Status
             };
+        }
+
+        private static bool IsAuditableShift(RosterShift shift)
+        {
+            return !string.Equals(shift.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsEligibleStaff(StaffProfile staff)
+        {
+            var isInactiveByStatus = string.Equals(staff.Status, "INACTIVE", StringComparison.OrdinalIgnoreCase);
+            return staff.IsActive == true && !isInactiveByStatus;
+        }
+
+        private static bool OverlapsWindow(RosterShift shift, DateTime windowStart, DateTime windowEnd)
+        {
+            return shift.Start < windowEnd && shift.End > windowStart;
+        }
+
+        private static double GetMonthlyWorkedHoursFromShifts(int staffId, int year, int month, IReadOnlyList<RosterShift> shifts)
+        {
+            var monthStart = new DateTime(year, month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+
+            return shifts
+                .Where(s => s.StaffId == staffId)
+                .Sum(s => GetOverlapHours(s.Start, s.End, monthStart, monthEnd));
         }
 
         private static double GetOverlapHours(DateTime shiftStart, DateTime shiftEnd, DateTime windowStart, DateTime windowEnd)
@@ -233,4 +265,3 @@ namespace DevCoreHospital.Services
         }
     }
 }
-

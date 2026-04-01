@@ -2,131 +2,43 @@
 using DevCoreHospital.Configuration;
 using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels;
-using Microsoft.UI;
+using DevCoreHospital.Repositories;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace DevCoreHospital.Views.Admin
 {
-    public sealed partial class FatigueAuditPage : Page, INotifyPropertyChanged
+    public sealed partial class FatigueAuditPage : Page
     {
         private readonly FatigueShiftAuditViewModel _viewModel;
         private readonly IFatigueAuditService _auditService;
+        private readonly IFatigueAuditRepository _auditRepository;
         private readonly SqlFatigueShiftDataSource _sqlDataSource;
-
-        public ObservableCollection<FatigueShiftAuditViewModel.AuditViolationRow> Violations { get; } = new();
-        public ObservableCollection<FatigueShiftAuditViewModel.AutoSuggestRow> Suggestions { get; } = new();
-
-        private string _statusMessage = "Select a week and run the auto-audit to check for fatigue violations.";
-        public string StatusMessage
-        {
-            get => _statusMessage;
-            set
-            {
-                if (_statusMessage != value)
-                {
-                    _statusMessage = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private string _weekLabel = "Week of Today";
-        public string WeekLabel
-        {
-            get => _weekLabel;
-            set
-            {
-                if (_weekLabel != value)
-                {
-                    _weekLabel = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private string _publishStatus = "Publish status: BLOCKED";
-        public string PublishStatus
-        {
-            get => _publishStatus;
-            set
-            {
-                if (_publishStatus != value)
-                {
-                    _publishStatus = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private string _publishStatusDescription = "Roster cannot be published while violations exist. Run audit and resolve all conflicts.";
-        public string PublishStatusDescription
-        {
-            get => _publishStatusDescription;
-            set
-            {
-                if (_publishStatusDescription != value)
-                {
-                    _publishStatusDescription = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private Brush _publishStatusColor = new SolidColorBrush(Colors.Red);
-        public Brush PublishStatusColor
-        {
-            get => _publishStatusColor;
-            set
-            {
-                if (_publishStatusColor != value)
-                {
-                    _publishStatusColor = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        private bool _canPublish = false;
-        public bool CanPublish
-        {
-            get => _canPublish;
-            set
-            {
-                if (_canPublish != value)
-                {
-                    _canPublish = value;
-                    OnPropertyChanged();
-                    UpdatePublishStatus();
-                }
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         public FatigueAuditPage()
         {
             InitializeComponent();
 
-            // Initialize SQL data source and service
+            // Initialize SQL data source
             _sqlDataSource = new SqlFatigueShiftDataSource(AppSettings.ConnectionString);
-            _auditService = new FatigueAuditService(_sqlDataSource);
+            
+            // Initialize repository
+            _auditRepository = new FatigueAuditRepository(_sqlDataSource);
+            
+            // Initialize service with repository
+            _auditService = new FatigueAuditService(_auditRepository);
             
             // Initialize ViewModel
             _viewModel = new FatigueShiftAuditViewModel(_auditService);
 
-            // Set DataContext for binding
-            DataContext = this;
+            // Set DataContext to ViewModel for binding
+            DataContext = _viewModel;
 
             // Initialize week picker to today
             WeekStartPicker.Date = new DateTimeOffset(DateTime.Today);
-            UpdateWeekLabel();
         }
 
         private void WeekStartPicker_DateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
@@ -134,67 +46,27 @@ namespace DevCoreHospital.Views.Admin
             if (sender.Date.HasValue)
             {
                 _viewModel.SelectedWeekStart = sender.Date.Value;
-                UpdateWeekLabel();
             }
-        }
-
-        private void UpdateWeekLabel()
-        {
-            var date = _viewModel.SelectedWeekStart.Date;
-            WeekLabel = $"Week of {date:dddd, MMMM d, yyyy}";
         }
 
         private void RunAutoAudit_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                StatusMessage = "Running audit...";
-                
-                // Run the audit
+                // Run the audit through ViewModel - all UI updates handled automatically via binding
                 _viewModel.RunAutoAudit();
-
-                // Sync violations and suggestions from ViewModel to UI
-                Violations.Clear();
-                foreach (var violation in _viewModel.Violations)
-                {
-                    Violations.Add(violation);
-                }
-
-                Suggestions.Clear();
-                foreach (var suggestion in _viewModel.Suggestions)
-                {
-                    Suggestions.Add(suggestion);
-                }
-
-                // Update UI state
-                CanPublish = _viewModel.CanPublish;
-
-                // Update status message
-                StatusMessage = _viewModel.StatusMessage;
-
-                if (CanPublish)
-                {
-                    PublishStatusDescription = "✓ No violations detected. Roster is ready to publish.";
-                }
-                else
-                {
-                    PublishStatusDescription = $"✗ {Violations.Count} conflict(s) found. Review violations and suggestions to proceed.";
-                }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Error during audit: {ex.Message}";
-                CanPublish = false;
+                _viewModel.StatusMessage = $"Error during audit: {ex.Message}";
             }
         }
 
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
-            Violations.Clear();
-            Suggestions.Clear();
-            StatusMessage = "Select a week and run the auto-audit to check for fatigue violations.";
-            CanPublish = false;
-            PublishStatusDescription = "Roster cannot be published while violations exist. Run audit and resolve all conflicts.";
+            // Clear violations and suggestions through ViewModel
+            _viewModel.Violations.Clear();
+            _viewModel.Suggestions.Clear();
         }
 
         private async void ApplyReassignment_Click(object sender, RoutedEventArgs e)
@@ -216,8 +88,8 @@ namespace DevCoreHospital.Views.Admin
                     return;
                 }
 
-                // Apply the reassignment to the SQL data source
-                bool success = _sqlDataSource.ReassignShift(shiftId, suggestion.SuggestedStaffId.Value);
+                // Apply the reassignment through the repository
+                bool success = _auditRepository.ReassignShift(shiftId, suggestion.SuggestedStaffId.Value);
                 if (success)
                 {
                     // Show confirmation dialog
@@ -231,7 +103,7 @@ namespace DevCoreHospital.Views.Admin
                     await confirmDialog.ShowAsync();
 
                     // Auto-run audit again to show updated violations
-                    RunAutoAudit_Click(null, null);
+                    _viewModel.RunAutoAudit();
                 }
                 else
                 {
@@ -249,37 +121,19 @@ namespace DevCoreHospital.Views.Admin
 
         private void PublishRoster_Click(object sender, RoutedEventArgs e)
         {
-            if (CanPublish)
+            if (_viewModel.CanPublish)
             {
                 var dialog = new ContentDialog
                 {
                     Title = "Roster Published",
-                    Content = $"The roster for the week of {WeekLabel} has been published successfully.",
+                    Content = $"The roster for the {_viewModel.WeekLabel} has been published successfully.",
                     CloseButtonText = "OK",
                     XamlRoot = Content.XamlRoot
                 };
                 dialog.ShowAsync();
             }
         }
-
-        private void UpdatePublishStatus()
-        {
-            if (CanPublish)
-            {
-                PublishStatus = "Publish status: READY";
-                PublishStatusColor = new SolidColorBrush(Colors.Green);
-            }
-            else
-            {
-                PublishStatus = "Publish status: BLOCKED";
-                PublishStatusColor = new SolidColorBrush(Colors.Red);
-            }
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string name = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+        
     }
 }
 

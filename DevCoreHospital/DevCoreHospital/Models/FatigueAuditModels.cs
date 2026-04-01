@@ -12,6 +12,7 @@ namespace DevCoreHospital.Models
         public string Specialization { get; set; } = string.Empty;
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
+        public string? Status { get; set; }
     }
 
     public sealed class StaffProfile
@@ -20,7 +21,9 @@ namespace DevCoreHospital.Models
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
         public string Specialization { get; set; } = string.Empty;
-        public bool IsAvailable { get; set; }
+        public bool? IsAvailable { get; set; }
+        public bool? IsActive { get; set; }
+        public string? Status { get; set; }
     }
 
     public sealed class AuditViolation
@@ -55,4 +58,3 @@ namespace DevCoreHospital.Models
         public IReadOnlyList<AutoSuggestRecommendation> Suggestions { get; set; } = Array.Empty<AutoSuggestRecommendation>();
     }
 }
-
