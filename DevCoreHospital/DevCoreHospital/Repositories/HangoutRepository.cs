@@ -139,5 +139,34 @@ namespace DevCoreHospital.Repositories
                 h.participantList.Add(new Doctor { StaffID = sId, FirstName = fName, LastName = lName });
             }
         }
+        // Add this method inside the HangoutRepository class
+        public bool HasConflictsOnDate(int staffId, DateTime date)
+        {
+            using var conn = _connectionFactory.Create();
+            conn.Open();
+
+            using var cmd = conn.CreateCommand();
+            // Check for any appointments scheduled on that exact day
+            // Exclude appointments that are "Finished" or "Canceled" (or "Cancelled")
+            cmd.CommandText = @"
+        SELECT COUNT(*)
+        FROM Appointments
+        WHERE doctor_id = @StaffId
+          AND CAST(start_time AS DATE) = CAST(@Date AS DATE)
+          AND status NOT IN ('Finished', 'Canceled', 'Cancelled')";
+
+            var paramStaff = cmd.CreateParameter();
+            paramStaff.ParameterName = "@StaffId";
+            paramStaff.Value = staffId;
+            cmd.Parameters.Add(paramStaff);
+
+            var paramDate = cmd.CreateParameter();
+            paramDate.ParameterName = "@Date";
+            paramDate.Value = date.Date;
+            cmd.Parameters.Add(paramDate);
+
+            int count = Convert.ToInt32(cmd.ExecuteScalar());
+            return count > 0;
+        }
     }
 }
