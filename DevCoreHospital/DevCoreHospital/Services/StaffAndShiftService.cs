@@ -301,7 +301,7 @@ namespace DevCoreHospital.Services
         }
 
 
-        // ===== Specialization and Certification Filtering for Location =====
+        // ======= Specialization and Certification Filtering for Location =======
         public List<string> GetSpecializationsAndCertificationsForLocation(string location)
         {
             List<string> result = new List<string>();
@@ -309,22 +309,20 @@ namespace DevCoreHospital.Services
 
             if (location.Equals("Pharmacy", StringComparison.OrdinalIgnoreCase))
             {
-                // For Pharmacy, we care about Pharmacysts' certifications
                 result.AddRange(allStaff.OfType<Pharmacyst>()
                     .Where(p => !string.IsNullOrEmpty(p.Certification))
                     .Select(p => p.Certification));
             }
             else
             {
-                // For other locations, we care about Doctors' specializations
                 result.AddRange(allStaff.OfType<Doctor>()
                     .Where(d => !string.IsNullOrEmpty(d.Specialization))
                     .Select(d => d.Specialization));
             }
 
-            // remove duplicates and sort
             result = result.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
             return result;
         }
+
     }
 }

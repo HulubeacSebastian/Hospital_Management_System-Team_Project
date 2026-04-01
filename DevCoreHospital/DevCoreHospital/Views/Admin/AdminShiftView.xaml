@@ -62,6 +62,7 @@
                         ItemsSource="{x:Bind ViewModel.AvailableStaff, Mode=OneWay}"
                         DisplayMemberPath="FirstName" />
 
+
                 <TextBlock Text="Qualified found staff:" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,5,0,-10"/>
                 <ListView ItemsSource="{x:Bind ViewModel.AvailableStaff, Mode=OneWay}"
                           MaxHeight="120" BorderThickness="1" BorderBrush="#2E3B32"
@@ -82,14 +83,8 @@
                                     Foreground="{StaticResource TextBrush}"
                                     HorizontalAlignment="Stretch"/>
 
-                <Grid ColumnSpacing="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TimePicker x:Name="StartTimePicker" Header="Starting Hour" Grid.Column="0" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Stretch"/>
-                    <TimePicker x:Name="EndTimePicker" Header="Ending Hour" Grid.Column="1" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Stretch"/>
-                </Grid>
+                <TimePicker x:Name="StartTimePicker" Header="Starting Hour"  Foreground="{StaticResource TextBrush}" HorizontalAlignment="Stretch"/>
+                <TimePicker x:Name="EndTimePicker" Header="Ending Hour"  Foreground="{StaticResource TextBrush}" HorizontalAlignment="Stretch"/>
 
                 <Button Content="Schedule the Shift" 
                         Click="CreateShift_Click" 

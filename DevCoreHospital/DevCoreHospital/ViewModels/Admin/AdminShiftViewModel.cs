@@ -39,12 +39,11 @@ namespace DevCoreHospital.ViewModels.Admin
             }
         }
 
-        // Cerința: Filtrare automată bazată pe locație/specializare
         public void FilterStaffForShift(string location, string requiredSpecializationOrCertification)
         {
             AvailableStaff.Clear();
             var filtered = _StaffAndShiftService.GetFilteredStaff(location, requiredSpecializationOrCertification);
-            
+
             foreach (var staff in filtered)
             {
                 AvailableStaff.Add(staff);

@@ -30,7 +30,6 @@ namespace DevCoreHospital.Views.Admin
         {
             if (ViewModel == null) return;
 
-            // this method should fill the SpecializationCertificationComboBox with the relevant specializations/certifications for the selected location
             if (LocationComboBox.SelectedItem is string selectedLocation)
             {
                 ViewModel.FilterSpecializationsAndCertificationsForLocation(selectedLocation);
@@ -50,6 +49,7 @@ namespace DevCoreHospital.Views.Admin
                 StaffComboBox.SelectedIndex = -1;
             }
         }
+
 
         private void CreateShift_Click(object sender, RoutedEventArgs e)
         {
