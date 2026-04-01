@@ -28,9 +28,9 @@ namespace DevCoreHospital.Data
 
                 using var cmd = connection.CreateCommand();
                 cmd.CommandText = @"
-                    SELECT staff_id, role, first_name, last_name, contact_info, 
-                           is_available, license_number, specialization, status, certification 
-                    FROM Staff";
+                        SELECT staff_id, role, first_name, last_name, contact_info, 
+                        is_available, license_number, specialization, status, certification, years_of_experience 
+                        FROM Staff";
 
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
@@ -45,11 +45,16 @@ namespace DevCoreHospital.Data
                     string special = reader.IsDBNull(7) ? "" : reader.GetString(7);
                     string statusStr = reader.IsDBNull(8) ? "Available" : reader.GetString(8);
                     string cert = reader.IsDBNull(9) ? "" : reader.GetString(9);
+                    int yearsExp = reader.IsDBNull(10) ? 0 : reader.GetInt32(10); // <-- Fetch Experience
 
                     Enum.TryParse<DoctorStatus>(statusStr, true, out DoctorStatus docStatus);
 
                     if (role == "Doctor")
-                        staffList.Add(new Doctor(id, firstName, lastName, contactInfo, isAvailable, special, license, docStatus));
+                    {
+                        var doc = new Doctor(id, firstName, lastName, contactInfo, isAvailable, special, license, docStatus,yearsExp);
+                        doc.YearsOfExperience = yearsExp; // <-- Assign Experience
+                        staffList.Add(doc);
+                    }
                     else if (role == "Pharmacist")
                         staffList.Add(new Pharmacyst(id, firstName, lastName, contactInfo, isAvailable, cert));
                 }
