@@ -1,5 +1,7 @@
 ﻿using DevCoreHospital.Services;
 using DevCoreHospital.ViewModels.Base;
+using Microsoft.UI;
+using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -34,7 +36,7 @@ namespace DevCoreHospital.ViewModels
         public string StatusMessage
         {
             get => _statusMessage;
-            private set => SetProperty(ref _statusMessage, value);
+            set => SetProperty(ref _statusMessage, value);
         }
 
         private bool _canPublish = false;
@@ -44,11 +46,23 @@ namespace DevCoreHospital.ViewModels
             private set
             {
                 if (SetProperty(ref _canPublish, value))
+                {
                     RaisePropertyChanged(nameof(PublishStatus));
+                    RaisePropertyChanged(nameof(PublishStatusColor));
+                    RaisePropertyChanged(nameof(PublishStatusDescription));
+                }
             }
         }
 
         public string PublishStatus => CanPublish ? "Publish status: READY" : "Publish status: BLOCKED";
+
+        public Brush PublishStatusColor => CanPublish 
+            ? new SolidColorBrush(Colors.Green) 
+            : new SolidColorBrush(Colors.Red);
+
+        public string PublishStatusDescription => CanPublish
+            ? "✓ No violations detected. Roster is ready to publish."
+            : "Roster cannot be published while violations exist. Run audit and resolve all conflicts.";
 
         public RelayCommand RunAutoAuditCommand { get; }
 
