@@ -35,7 +35,7 @@ namespace DevCoreHospital.Views
             }
         }
 
-        private string _manualInterventionHint = "Manual override accepts near-end IN_EXAMINATION or not-working doctors.";
+        private string _manualInterventionHint = "Manual override accepts near-end IN_EXAMINATION doctors only.";
         public string ManualInterventionHint
         {
             get => _manualInterventionHint;
@@ -68,7 +68,7 @@ namespace DevCoreHospital.Views
             SuccessfulMatches.Clear();
             OverrideCandidates.Clear();
             StatusMessage = "Dispatching...";
-            ManualInterventionHint = "Manual override accepts near-end IN_EXAMINATION or not-working doctors.";
+            ManualInterventionHint = "Manual override accepts near-end IN_EXAMINATION doctors only.";
 
             try
             {
@@ -124,7 +124,7 @@ namespace DevCoreHospital.Views
             SuccessfulMatches.Clear();
             OverrideCandidates.Clear();
             StatusMessage = "Ready";
-            ManualInterventionHint = "Manual override accepts near-end IN_EXAMINATION or not-working doctors.";
+            ManualInterventionHint = "Manual override accepts near-end IN_EXAMINATION doctors only.";
         }
 
         private async void SimulateIncoming_Click(object sender, RoutedEventArgs e)
@@ -213,7 +213,7 @@ namespace DevCoreHospital.Views
             }
 
             ManualInterventionHint = OverrideCandidates.Count == 0
-                ? $"No eligible override doctor found (need near-end IN_EXAMINATION or not-working doctor)."
+                ? $"No eligible override doctor found (need near-end IN_EXAMINATION doctor)."
                 : $"Found {OverrideCandidates.Count} eligible override candidate(s).";
         }
 

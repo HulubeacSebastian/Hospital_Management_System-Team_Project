@@ -3,12 +3,14 @@ using DevCoreHospital.Models;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DevCoreHospital.Data
 {
     public sealed class SqlERDispatchDataSource : IERDispatchDataSource
     {
         private readonly string _connectionString;
+        private readonly ShiftSchemaCapabilities _shiftSchema;
 
         public SqlERDispatchDataSource(string? connectionString = null)
         {
@@ -17,6 +19,7 @@ namespace DevCoreHospital.Data
                 : connectionString;
 
             EnsureReq4Schema();
+            _shiftSchema = DetectShiftSchemaCapabilities();
         }
 
         public IReadOnlyList<DoctorProfile> GetAvailableDoctors()
@@ -38,7 +41,7 @@ namespace DevCoreHospital.Data
                 connection.Open();
                 using (SqlCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = @"
+                    command.CommandText = $@"
                         SELECT s.staff_id,
                                s.first_name + ' ' + s.last_name AS full_name,
                                COALESCE(NULLIF(s.specialization, ''), 'General') AS specialization,
@@ -51,9 +54,7 @@ namespace DevCoreHospital.Data
                               SELECT 1
                               FROM Shifts sh
                               WHERE sh.staff_id = s.staff_id
-                                AND sh.start_time <= GETDATE()
-                                AND sh.end_time >= GETDATE()
-                                AND (sh.is_active = 1 OR UPPER(COALESCE(sh.status, '')) = 'ACTIVE')
+                                AND {BuildCurrentShiftPredicate("sh")}
                           );";
 
                     using (SqlDataReader reader = command.ExecuteReader())
@@ -175,7 +176,7 @@ namespace DevCoreHospital.Data
                 connection.Open();
                 using (SqlCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = @"
+                    command.CommandText = $@"
                         SELECT s.staff_id,
                                s.first_name + ' ' + s.last_name AS full_name,
                                COALESCE(NULLIF(s.specialization, ''), 'General') AS specialization,
@@ -185,9 +186,7 @@ namespace DevCoreHospital.Data
                                sh.end_time
                         FROM Staff s
                         LEFT JOIN Shifts sh ON sh.staff_id = s.staff_id
-                           AND sh.start_time <= GETDATE()
-                           AND sh.end_time >= GETDATE()
-                           AND (sh.is_active = 1 OR UPPER(COALESCE(sh.status, '')) = 'ACTIVE')
+                           AND {BuildCurrentShiftPredicate("sh")}
                         WHERE UPPER(LTRIM(RTRIM(COALESCE(s.role, '')))) = 'DOCTOR'
                           AND s.staff_id = @DoctorId;";
                     AddParameter(command, "@DoctorId", doctorId);
@@ -257,13 +256,14 @@ namespace DevCoreHospital.Data
         private IReadOnlyList<DoctorProfile> GetDoctorsByStatus(string status)
         {
             var doctors = new List<DoctorProfile>();
+            var requestedStatus = ParseStatus(status);
 
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 using (SqlCommand command = connection.CreateCommand())
                 {
-                    command.CommandText = @"
+                    command.CommandText = $@"
                         SELECT s.staff_id,
                                s.first_name + ' ' + s.last_name AS full_name,
                                COALESCE(NULLIF(s.specialization, ''), 'General') AS specialization,
@@ -274,17 +274,13 @@ namespace DevCoreHospital.Data
                         FROM Staff s
                         INNER JOIN Shifts sh ON sh.staff_id = s.staff_id
                         WHERE UPPER(LTRIM(RTRIM(COALESCE(s.role, '')))) = 'DOCTOR'
-                          AND UPPER(COALESCE(s.status, '')) = @Status
-                          AND sh.start_time <= GETDATE()
-                          AND sh.end_time >= GETDATE()
-                          AND (sh.is_active = 1 OR UPPER(COALESCE(sh.status, '')) = 'ACTIVE');";
-                    AddParameter(command, "@Status", status);
+                          AND {BuildCurrentShiftPredicate("sh")};";
 
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            doctors.Add(new DoctorProfile
+                            var profile = new DoctorProfile
                             {
                                 DoctorId = reader.GetInt32(0),
                                 FullName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
@@ -293,7 +289,10 @@ namespace DevCoreHospital.Data
                                 Location = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
                                 ScheduleStart = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
                                 ScheduleEnd = reader.IsDBNull(6) ? null : reader.GetDateTime(6)
-                            });
+                            };
+
+                            if (profile.Status == requestedStatus)
+                                doctors.Add(profile);
                         }
                     }
                 }
@@ -305,6 +304,13 @@ namespace DevCoreHospital.Data
         private static DoctorStatus ParseStatus(string? raw)
         {
             var token = (raw ?? string.Empty).Trim().Replace(" ", "_");
+
+            if (string.Equals(token, "Available", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(token, "AVAILABLE", StringComparison.OrdinalIgnoreCase))
+            {
+                token = nameof(DoctorStatus.AVAILABLE);
+            }
+
             return Enum.TryParse<DoctorStatus>(token, true, out var status)
                 ? status
                 : DoctorStatus.OFF_DUTY;
@@ -316,6 +322,50 @@ namespace DevCoreHospital.Data
             parameter.ParameterName = name;
             parameter.Value = value;
             command.Parameters.Add(parameter);
+        }
+
+        private ShiftSchemaCapabilities DetectShiftSchemaCapabilities()
+        {
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                return new ShiftSchemaCapabilities(
+                    ColumnExists(connection, "Shifts", "is_active"),
+                    ColumnExists(connection, "Shifts", "status"));
+            }
+        }
+
+        private static bool ColumnExists(SqlConnection connection, string tableName, string columnName)
+        {
+            using (SqlCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+                    SELECT COUNT(*)
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = @TableName
+                      AND COLUMN_NAME = @ColumnName;";
+
+                AddParameter(command, "@TableName", tableName);
+                AddParameter(command, "@ColumnName", columnName);
+                return Convert.ToInt32(command.ExecuteScalar()) > 0;
+            }
+        }
+
+        private string BuildCurrentShiftPredicate(string shiftAlias)
+        {
+            var clauses = new List<string>
+            {
+                $"{shiftAlias}.start_time <= GETDATE()",
+                $"{shiftAlias}.end_time >= GETDATE()"
+            };
+
+            if (_shiftSchema.HasIsActive)
+                clauses.Add($"ISNULL({shiftAlias}.is_active, 1) = 1");
+
+            if (_shiftSchema.HasStatus)
+                clauses.Add($"UPPER(COALESCE({shiftAlias}.status, '')) NOT IN ('CANCELLED', 'COMPLETED', 'VACATION')");
+
+            return string.Join(Environment.NewLine + "                                AND ", clauses);
         }
 
         private void EnsureReq4Schema()
@@ -345,6 +395,18 @@ namespace DevCoreHospital.Data
                     command.ExecuteNonQuery();
                 }
             }
+        }
+
+        private sealed class ShiftSchemaCapabilities
+        {
+            public ShiftSchemaCapabilities(bool hasIsActive, bool hasStatus)
+            {
+                HasIsActive = hasIsActive;
+                HasStatus = hasStatus;
+            }
+
+            public bool HasIsActive { get; }
+            public bool HasStatus { get; }
         }
     }
 }

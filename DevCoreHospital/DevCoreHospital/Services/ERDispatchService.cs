@@ -18,13 +18,22 @@ namespace DevCoreHospital.Services
 
         public Task<IReadOnlyList<int>> SimulateIncomingRequestsAsync(int count)
         {
-            var templates = new (string Specialization, string Location)[]
+            var liveTemplates = _dataSource.GetAvailableDoctors()
+                .Where(d => d.Status == DoctorStatus.AVAILABLE)
+                .Where(d => !string.IsNullOrWhiteSpace(d.Specialization) && !string.IsNullOrWhiteSpace(d.Location))
+                .Select(d => (Specialization: d.Specialization.Trim(), Location: d.Location.Trim()))
+                .Distinct()
+                .ToArray();
+
+            var fallbackTemplates = new (string Specialization, string Location)[]
             {
                 ("Surgeon", "Ward A"),
-                ("Cardiologist", "Ward A"),
+                ("Cardiology", "Ward A"),
                 ("Neurology", "Ward A"),
                 ("Pediatrics", "Ward A")
             };
+
+            var templates = liveTemplates.Length > 0 ? liveTemplates : fallbackTemplates;
 
             var normalizedCount = Math.Max(1, count);
             var startIndex = DateTime.Now.Minute % templates.Length;
@@ -69,7 +78,7 @@ namespace DevCoreHospital.Services
                 {
                     Request = request,
                     IsSuccess = false,
-                    Message = $"No available {request.Specialization} specialist found for {request.Location}."
+                    Message = $"No AVAILABLE {request.Specialization} specialist found for {request.Location}."
                 };
 
                 // Flag in red: system stores as unmatched, admin sees alert
@@ -109,11 +118,7 @@ namespace DevCoreHospital.Services
                 })
                 .ToList();
 
-            var notWorking = _dataSource.GetDoctorsNotWorkingNow()
-                .ToList();
-
             var strictCandidates = nearEndInExam
-                .Concat(notWorking)
                 .GroupBy(d => d.DoctorId)
                 .Select(g => g.First())
                 .Where(d => IsSameValue(d.Specialization, request.Specialization))
@@ -153,7 +158,7 @@ namespace DevCoreHospital.Services
                     Request = request,
                     IsSuccess = false,
                     Message =
-                        $"Manual override blocked. Doctor must be IN_EXAMINATION within {nearEndMinutes} min of end_time or not currently working."
+                        $"Manual override blocked. Doctor must be IN_EXAMINATION within {nearEndMinutes} min of end_time."
                 };
             }
 
