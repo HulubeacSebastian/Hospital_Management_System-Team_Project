@@ -811,5 +811,35 @@ namespace DevCoreHospital.Data
             }
             return statuses;
         }
+        //for salary bonus
+        public bool DidStaffParticipateInHangout(int staffId, int month, int year)
+        {
+            try
+            {
+                using var conn = GetConnection();
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                // Check if there's at least one hangout the staff joined in the given month/year
+                cmd.CommandText = @"
+            SELECT COUNT(*) 
+            FROM Hangout_Participants hp
+            JOIN Hangouts h ON hp.hangout_id = h.hangout_id
+            WHERE hp.staff_id = @StaffId 
+              AND MONTH(h.date_time) = @Month 
+              AND YEAR(h.date_time) = @Year";
+
+                AddParameter(cmd, "@StaffId", staffId);
+                AddParameter(cmd, "@Month", month);
+                AddParameter(cmd, "@Year", year);
+
+                int count = Convert.ToInt32(cmd.ExecuteScalar());
+                return count > 0; // True if they joined 1 or more hangouts
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking hangout bonus: {ex.Message}");
+                return false;
+            }
+        }
     }
 }

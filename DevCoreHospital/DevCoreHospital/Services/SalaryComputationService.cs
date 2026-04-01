@@ -14,28 +14,27 @@ namespace DevCoreHospital.Services
             _dbManager = dbManager;
         }
 
-        public Task<double> ComputeSalaryDoctorAsync(Doctor doctor, List<Shift> monthlyShifts)
+        public Task<double> ComputeSalaryDoctorAsync(Doctor doctor, List<Shift> monthlyShifts, int month, int year)
         {
             double totalHours = 0;
 
-            // Task 3 implemented via DB
             foreach (var shift in monthlyShifts)
             {
                 double dbHours = _dbManager.GetShiftHoursFromDb(shift.Id);
-
-                if (dbHours > 0)
-                {
-                    totalHours += dbHours;
-                }
-                else
-                {
-                    // Fallback calculation in case DB fails
-                    totalHours += (shift.EndTime - shift.StartTime).TotalHours;
-                }
+                totalHours += dbHours > 0 ? dbHours : (shift.EndTime - shift.StartTime).TotalHours;
             }
 
             double doctorHourlyRate = 85.0;
-            return Task.FromResult(totalHours * doctorHourlyRate);
+            double baseSalary = totalHours * doctorHourlyRate;
+
+            // Apply Hangout Bonus (5%) if they attended at least 1 hangout
+            bool getsHangoutBonus = _dbManager.DidStaffParticipateInHangout(doctor.StaffID, month, year);
+            if (getsHangoutBonus)
+            {
+                baseSalary *= 1.05; // Adds 5%
+            }
+
+            return Task.FromResult(baseSalary);
         }
 
         public Task<double> ComputeSalaryPharmacistAsync(Pharmacyst pharmacist, List<Shift> monthlyShifts, int month, int year)
