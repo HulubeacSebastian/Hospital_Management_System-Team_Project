@@ -108,6 +108,11 @@ namespace DevCoreHospital.Views.Admin
             }
         }
 
+        private void OpenSchedule_Click(object sender, RoutedEventArgs e)
+        {
+            this.Frame.Navigate(typeof(AdminSchedulePage));
+        }
+
         private void ShowMessage(string message, InfoBarSeverity severity)
         {
             StatusInfoBar.Message = message;

@@ -93,8 +93,8 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center" BorderBrush="#2E3B32" BorderThickness="0,0,1,0" Padding="0,0,15,0">
-                                    <TextBlock Text="{Binding StartTime, StringFormat='{}{0:dd MMM}'}" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding StartTime, StringFormat='{}{0:dddd}'}" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                                    <TextBlock Text="{x:Bind DisplayDayMonth}" Foreground="{StaticResource TextBrush}" FontSize="16" FontWeight="Bold"/>
+                                    <TextBlock Text="{x:Bind DisplayDayName}" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center" Margin="15,0,0,0">
@@ -111,9 +111,9 @@
 
                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="5">
                                     <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right">
-                                        <TextBlock Text="{Binding StartTime, StringFormat='{}{0:HH:mm}'}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{x:Bind DisplayStartTime}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
                                         <TextBlock Text="-" Foreground="{StaticResource TextBrush}"/>
-                                        <TextBlock Text="{Binding EndTime, StringFormat='{}{0:HH:mm}'}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{x:Bind DisplayEndTime}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
                                     </StackPanel>
                                     <TextBlock Text="{x:Bind Status}" Foreground="#4CAF50" HorizontalAlignment="Right" FontWeight="Bold"/>
                                 </StackPanel>
