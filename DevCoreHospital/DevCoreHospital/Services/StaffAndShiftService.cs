@@ -66,6 +66,43 @@ namespace DevCoreHospital.Services
             return true;
         }
 
+        // ========================= VIEW MODEL METHODS =========================
+
+        public List<IStaff> GetFilteredStaff(string location, string requiredSpecializationOrCertification)
+        {
+            var allStaff = _staffRepo.LoadAllStaff();
+            var filteredStaff = new List<IStaff>();
+
+            if (location.Equals("Pharmacy", StringComparison.OrdinalIgnoreCase))
+            {
+                // If location is Pharmacy, we only care about Pharmacysts
+                filteredStaff.AddRange(allStaff.OfType<Pharmacyst>().Where(p => p.Certification.Contains(requiredSpecializationOrCertification, StringComparison.OrdinalIgnoreCase)));
+            }
+            else
+            {
+                // For other locations, we care about Doctors
+                filteredStaff.AddRange(allStaff.OfType<Doctor>().Where(d => d.Specialization.Contains(requiredSpecializationOrCertification, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            return filteredStaff;
+        }
+
+        public List<IStaff> FindStaffReplacements(Shift shift)
+        {
+            if (shift == null || shift.AppointedStaff == null) return new List<IStaff>();
+
+            var currentStaff = shift.AppointedStaff;
+            var allStaff = _staffRepo.LoadAllStaff();
+
+            // Find staff of the same type (Doctor or Pharmacyst) who are not the current staff member
+            // and are not already scheduled during the shift's time.
+            return allStaff.Where(s =>
+                s.GetType() == currentStaff.GetType() &&
+                s.StaffID != currentStaff.StaffID &&
+                ValidateNoOverlap(s.StaffID, shift.StartTime, shift.EndTime)
+            ).ToList();
+        }
+
         // ========================= SHIFT SWAP - REQUEST =========================
         public List<IStaff> GetEligibleSwapColleaguesForShift(int requesterId, int shiftId, out string error)
         {
@@ -97,7 +134,15 @@ namespace DevCoreHospital.Services
                 return new List<IStaff>();
             }
 
-            return _staffRepo.GetPotentialSwapColleagues(requester);
+            // Get colleagues with the same role/specialization who are marked as Available
+            var potentialColleagues = _staffRepo.GetPotentialSwapColleagues(requester);
+
+            // Filter out colleagues who are ALREADY working during this shift's time interval
+            var availableColleagues = potentialColleagues
+                .Where(c => !_shiftRepo.IsStaffWorkingDuring(c.StaffID, shift.StartTime, shift.EndTime))
+                .ToList();
+
+            return availableColleagues;
         }
 
         public bool RequestShiftSwap(int requesterId, int shiftId, int colleagueId, out string message)
@@ -134,14 +179,14 @@ namespace DevCoreHospital.Services
             var eligible = _staffRepo.GetPotentialSwapColleagues(requester).Any(c => c.StaffID == colleagueId);
             if (!eligible)
             {
-                message = "Selected colleague is not from the same role/profile.";
+                message = "Selected colleague is not from the same role/profile or is not currently available.";
                 return false;
             }
 
             var isWorking = _shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime);
-            if (!isWorking)
+            if (isWorking)
             {
-                message = "Selected colleague is not working during that time interval.";
+                message = "Selected colleague is already working during that time interval.";
                 return false;
             }
 
@@ -206,9 +251,9 @@ namespace DevCoreHospital.Services
                 return false;
             }
 
-            if (!_shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime))
+            if (_shiftRepo.IsStaffWorkingDuring(colleagueId, shift.StartTime, shift.EndTime))
             {
-                message = "You are no longer working in that interval.";
+                message = "You are already scheduled to work in that interval.";
                 return false;
             }
 
@@ -254,5 +299,30 @@ namespace DevCoreHospital.Services
             message = "Swap rejected.";
             return true;
         }
+
+
+        // ======= Specialization and Certification Filtering for Location =======
+        public List<string> GetSpecializationsAndCertificationsForLocation(string location)
+        {
+            List<string> result = new List<string>();
+            var allStaff = _staffRepo.LoadAllStaff();
+
+            if (location.Equals("Pharmacy", StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddRange(allStaff.OfType<Pharmacyst>()
+                    .Where(p => !string.IsNullOrEmpty(p.Certification))
+                    .Select(p => p.Certification));
+            }
+            else
+            {
+                result.AddRange(allStaff.OfType<Doctor>()
+                    .Where(d => !string.IsNullOrEmpty(d.Specialization))
+                    .Select(d => d.Specialization));
+            }
+
+            result = result.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
+            return result;
+        }
+
     }
 }

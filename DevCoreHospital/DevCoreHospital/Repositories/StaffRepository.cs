@@ -49,6 +49,11 @@ namespace DevCoreHospital.Repositories
             return _dbManager.GetStaff().OfType<Pharmacyst>().Where(ph => ph.Available).ToList();
         }
 
+        public List<Pharmacyst> GetPharmacists()
+        {
+            return _dbManager.GetStaff().OfType<Pharmacyst>().ToList();
+        }
+
         public List<IStaff> GetPotentialSwapColleagues(IStaff requester)
         {
             // Refresh list so it includes latest DB data
@@ -60,6 +65,7 @@ namespace DevCoreHospital.Repositories
                     .OfType<Doctor>()
                     .Where(d =>
                         d.StaffID != requester.StaffID &&
+                        d.Available == true &&
                         d.Specialization.Equals(requesterDoctor.Specialization, StringComparison.OrdinalIgnoreCase))
                     .Cast<IStaff>()
                     .ToList();
@@ -71,6 +77,7 @@ namespace DevCoreHospital.Repositories
                     .OfType<Pharmacyst>()
                     .Where(p =>
                         p.StaffID != requester.StaffID &&
+                        p.Available == true &&
                         p.Certification.Equals(requesterPharmacyst.Certification, StringComparison.OrdinalIgnoreCase))
                     .Cast<IStaff>()
                     .ToList();

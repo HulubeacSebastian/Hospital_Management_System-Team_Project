@@ -59,8 +59,8 @@ namespace DevCoreHospital.ViewModels.Doctor
             {
                 if (SetProperty(ref _selectedRequest, value))
                 {
-                    ((RelayCommand)AcceptCommand).RaiseCanExecuteChanged();
-                    ((RelayCommand)RejectCommand).RaiseCanExecuteChanged();
+                    (AcceptCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RejectCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
